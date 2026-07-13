@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F4F2ED">
 <title>HK Terrassement — Ma feuille d'heures</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='64 6 332 170'%3E%3Cg fill='%23F07C1E'%3E%3Crect x='74' y='16' width='40' height='150' rx='2'/%3E%3Crect x='154' y='16' width='40' height='150' rx='2'/%3E%3Crect x='114' y='74' width='40' height='34'/%3E%3Crect x='244' y='16' width='40' height='150' rx='2'/%3E%3Cpolygon points='284,88 344,16 386,16 308,100 386,166 344,166 284,104'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='64 6 332 170'%3E%3Cg fill='%23FF6E00'%3E%3Crect x='74' y='16' width='40' height='150' rx='2'/%3E%3Crect x='154' y='16' width='40' height='150' rx='2'/%3E%3Crect x='114' y='74' width='40' height='34'/%3E%3Crect x='244' y='16' width='40' height='150' rx='2'/%3E%3Cpolygon points='284,88 344,16 386,16 308,100 386,166 344,166 284,104'/%3E%3C/g%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="HK Heures">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 460'%3E%3Crect width='460' height='460' fill='%23141518'/%3E%3Cg fill='%23F07C1E' transform='translate(30,140)'%3E%3Crect x='74' y='16' width='40' height='150' rx='2'/%3E%3Crect x='154' y='16' width='40' height='150' rx='2'/%3E%3Crect x='114' y='74' width='40' height='34'/%3E%3Crect x='244' y='16' width='40' height='150' rx='2'/%3E%3Cpolygon points='284,88 344,16 386,16 308,100 386,166 344,166 284,104'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 460'%3E%3Crect width='460' height='460' fill='%23141518'/%3E%3Cg fill='%23FF6E00' transform='translate(30,140)'%3E%3Crect x='74' y='16' width='40' height='150' rx='2'/%3E%3Crect x='154' y='16' width='40' height='150' rx='2'/%3E%3Crect x='114' y='74' width='40' height='34'/%3E%3Crect x='244' y='16' width='40' height='150' rx='2'/%3E%3Cpolygon points='284,88 344,16 386,16 308,100 386,166 344,166 284,104'/%3E%3C/g%3E%3C/svg%3E">
 <style>
 /* =============================================================================
    HK TERRASSEMENT — feuille d'heures (fichier unique autonome)
@@ -17,7 +17,7 @@
 :root{
   --ink:#17181B; --ink-2:#42444A; --muted:#8C877E; --line:#E7E2DA; --line-2:#D8D2C8;
   --bg:#F4F2ED; --surface:#FFFFFF; --surface-2:#FBFAF7; --header:#141518;
-  --accent:#E8681C; --accent-ink:#B44E0F; --accent-soft:#FBEEE1;
+  --accent:#FF6E00; --accent-ink:#D65D00; --accent-soft:#FFF2E6;
   --danger:#C0392B; --danger-soft:#F7E9E6; --good:#2F6B3D;
   --radius:14px; --radius-lg:20px; --ease:cubic-bezier(.2,.7,.2,1);
 }
@@ -40,15 +40,15 @@ body{
 .topbar .who{margin-left:auto;text-align:right;line-height:1.2}
 .topbar .who .nom{font-weight:700;font-size:15px;letter-spacing:.01em}
 .topbar .who .role{font-size:10.5px;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-top:2px}
-/* Splash */
-.splash{position:fixed;inset:0;z-index:100;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;transition:opacity .5s var(--ease)}
-.splash.out{opacity:0;pointer-events:none}
-.splash .logo{width:min(60vw,280px);height:auto;animation:logoIn .7s var(--ease) both}
-.splash .bar{width:150px;height:3px;border-radius:3px;background:var(--line-2);overflow:hidden;position:relative}
-.splash .bar::after{content:"";position:absolute;top:0;bottom:0;width:40%;border-radius:3px;background:var(--accent);animation:load 1.1s var(--ease) infinite}
-@keyframes logoIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
-@keyframes load{0%{left:-40%}100%{left:100%}}
-@media (prefers-reduced-motion:reduce){.splash .logo{animation:none}.splash .bar::after{animation:none;left:0;width:100%}}
+/* Splash (style Alsace Epandage) */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:#fff;animation:splashOut .55s ease 1.7s forwards}
+#splash .s-logo{width:76%;max-width:300px;height:auto;animation:splashMark .7s cubic-bezier(.2,.85,.25,1) both}
+#splash .s-bar{width:132px;height:3px;border-radius:3px;background:rgba(255,110,0,.16);overflow:hidden}
+#splash .s-bar::after{content:"";display:block;height:100%;width:45%;border-radius:3px;background:var(--accent);animation:splashBar 1.45s ease .3s both}
+@keyframes splashMark{0%{opacity:0;transform:scale(.7) translateY(10px)}60%{opacity:1}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes splashBar{0%{transform:translateX(-115%)}100%{transform:translateX(330%)}}
+@keyframes splashOut{to{opacity:0;visibility:hidden;pointer-events:none}}
+@media (prefers-reduced-motion:reduce){#splash{animation-delay:.8s}#splash .s-logo,#splash .s-bar::after{animation:none}}
 /* Onglets */
 .tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-top:20px}
 .tab{flex:1;text-align:center;border:none;background:transparent;font:inherit;font-weight:600;font-size:14px;color:var(--muted);padding:10px 12px;border-radius:999px;cursor:pointer;transition:.15s var(--ease)}
@@ -115,7 +115,7 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
 .ledger-row.sub .v{font-size:15px;color:#EDEAE4;font-variant-numeric:tabular-nums}
 /* Bouton envoyer */
 .btn-send{width:100%;margin-top:16px;border:none;border-radius:14px;background:var(--accent);color:#fff;font:inherit;font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:17px;cursor:pointer;transition:.15s var(--ease)}
-.btn-send:hover{background:#d65e14}
+.btn-send:hover{background:#E56200}
 .btn-send:active{transform:translateY(1px)}
 .btn-send:disabled{background:#CFC9C0;color:#fff;cursor:not-allowed}
 /* Confirmation */
@@ -138,14 +138,44 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:14px 22px;border-radius:12px;font-weight:600;font-size:14px;box-shadow:0 12px 30px rgba(0,0,0,.22);z-index:50;max-width:90%;text-align:center}
 .toast.err{background:var(--danger)}
 </style>
+<!-- Notifications push (OneSignal) — rappel 18h30 si feuille non remplie -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal){
+    await OneSignal.init({
+      appId: "64401ef8-b79e-453f-a80f-c4e1216f73cf",
+      serviceWorkerParam: { scope: "/HK-feuille-d-heure-/" },
+      serviceWorkerPath: "/HK-feuille-d-heure-/OneSignalSDKWorker.js"
+    });
+  });
+  // Helpers appelés par l'app
+  window.HK_NOTIF = {
+    login: function(id){
+      window.OneSignalDeferred.push(async function(OneSignal){
+        try{
+          await OneSignal.login(String(id));
+          if (OneSignal.Notifications.permission !== true){
+            await OneSignal.Slidedown.promptPush();
+          }
+        }catch(e){}
+      });
+    },
+    markDone: function(dateISO){
+      window.OneSignalDeferred.push(async function(OneSignal){
+        try{ await OneSignal.User.addTag("derniere_feuille", dateISO); }catch(e){}
+      });
+    }
+  };
+</script>
 </head>
 <body>
-<div class="splash" id="splash">
-  <img class="logo" src="data:image/png;base64,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" alt="HK Terrassement">
-  <div class="bar"></div>
-</div>
+<div id="splash" aria-hidden="true">
+    <img class="s-logo" src="data:image/png;base64,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" alt="HK Terrassement">
+    <div class="s-bar"></div>
+  </div>
 <div class="topbar">
-  <img class="brand" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAACiAQMAAABF3dItAAAABlBMVEX////wfB6Zg6s3AAAEX0lEQVR42sWYv47dRBTGfzPX5FpilXW5xSoZRUh0tKEIxCAhKHgDmuUttlglE4jQljwAxUq8QESVChkUQUGzogE6A6soFfJdUfgmvj4UHttje+xiVygu1vZ+/o5nzp/vHF9EpIbbIpJxW0QsIpLhDg2o9sbg37Xw9MiWYa4M62uxrw/beTh6zUtbgOPrGpers5PXuG/zP7+7PrlytqSwWzb+YpUvwXc4WIB3nEYL8MWB6FnYcnZ0+sE8e/elLXM7C+tDbJHOwiqPjstln1dmBlZbA9TJHPuFoUTiQD026SBUa+ZWLmufNjV+DP8ofpwx/qgGIA+zd+4fmzB8MUyYASyab21TguXRFL6U975pXmxdqQ3gc57lbq1VHHr32p1XNgrBDecuJ+0ORETaZgHrn9ci1UOR7EGIvf0oZhf1hainkrkStU1cvxjDYgcSMoaL1mN/huD94XMjWBWt1bi0U/h9T9PTEZyx6tpbUlZj45Z7vmaaIez6qnF/6xFbjQKTBFPRAndP2jdEo40CqO+S+y54UbeWou/NX0PcIHras9n2Hunhs+7qGeTjKukbxMu030kH12l79RxAqyG76p4zVcO1Ply2Ovprc/qK1Ic3bZE96QrVh1sV/cX6baGDXUHLMZR9unXw4+b0d7bYDd7pAxB7sJOiTRHuJU30+a3dpotWC1cJGeyeerHT/rsNwCs706hKsHDqu1j57HTQoOrdkO2vOAepLNgezq2EBgw9TWM/t3R3Vw/hvNcWEVlJBfeb6xxgXyTzfV4N2aVvXCbKXIHx2eWoh0PSwXUcnnx0F5HpYBP7xovQBODg0gTm5Mhn54z9oju4SF3Men8XnvHcL+B2o8o5tQIRm7VObTywFrEtW3mp0LstDUtPn7u6Dbuo0RgsYKbszLOTtHA0zgb3oB7PrtbzS+wZD1xFU23JBzFamPZKtCc9gXRSS+zaN170Z9Wlk9WwnTeQaig1QB6HBkoNSBreQobRTdcfTii2dcEtDQUl8P20Goq/lO48lkytv2l068bTgNv08gi9NdolgOyZPjRdSmd6moOe10W7UqxNAE7QvJwlH9R15DZavbs//Dy4eYmRE835NIwAfwA8bTf2+8jwXmJJ41y7fv5ktP7PHqdNxJpJ3RYD/O29D81DQLOO4FAGkpPw6Sd3AIyGVxY91tSf3jJJk6twPBXcC0MMBRq4gdRuRuqmRogedRX6fBi5uCmlz0k1QFz9O8qkEhRnLgMjiLKxckCT56FuWQN2vogE+Li80cGxHQ6MFsy6DLCzPir9K/ejyUNvbFQxl6k5RN7Sbo0aa1PPuQ7xGr9oTzzuTetXNXkeTnHA9sJ1HBCW1HPqyKzgtzm1n4w0yALrXrCLqfN6r+2F9hffXPzIjUKCVHZL0IdoSecEF1Wi+WHeL0dECvWgnBHcAo3liyrwkd2cNEcBqy7bMjSHM0GxiEWzKpn5nesSdCO2GzX57eHcObUKszcKiFRoR93xH5TBbjrFcv+EAAAAAElFTkSuQmCC" alt="HK Terrassement">
+  <img class="brand" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAACpAQMAAAAvGiLuAAAABlBMVEX/////bgAQJKG6AAAEgklEQVR42s2YMW/lRBDHf55nESNFF1enKxDPSNRAcUWKk+K7o+YTUIT7AoSOAqHldBLpoKC4AqEgvgSlQZEuHVdSIecOiVAgnJCT/JCfh8L2em2vXwQoglck7/nn2Z2dnfnP2gDAUlUz9lTVoKoZ7SdUIGDuI5MrAZDN4yusr8Dyr6yvFYdXW5v/p+fRdQ4eX2mt/9W6k6utb23E9c//eO4U1htwBieLYpP1PbttvrlXHIYb8NktfbgBH+3z9Sw2609NVJhZ68VjKNP5wfc5qJI5rFBRx3P4z4TI5ssEByf7XNh0Didj362RgFnPX4Iajufwh1DAs5nBP6mt+HmsV9KsrfDjk6FAjPH91uVyv12IqnaCnXBrb6GquZpFOXUt59dfDoF82YFwsuhmjkB8uInlHnfWXtfOtwx8Z+zCZRrSVQok6sWXsKXBKo4zL34zsqvw4afWCx9eNgENu6gOcZBbYSrH1hl83P+q0lHMYUdVl6pKtSwW2dBa4a2JxvQ4MN1VhaTNdBkUdvvZscrY46K/8f3b3e6Is9l2mgdPgUcWq+Y2XhnUCXnUEJk2J573eWCxWrHUL5uEH+DaGv9h+usyCiLoOwBBU4UWl92XF1kF8JDUxZ3Y0MzM28PBT7siO2j+75K4uDuLfOZX5FYH198OOpaMuvqTDMp+AzqsTYau3x1WzCgVX+T9MkMHtzr3xkyzqCCDVe7svLiDJwA/0N9N4OAyxcDuXCcqRp1s3WRAh3OjA+n8yPhlr826w73B4IGTD54Czsb1UfS6pqoLrWCv+Z4DbKlmblCr4eAVJBZruLED11GfbDZzY3+jitt6jiyu4nHcfNoy7OOhxWXiVKjjV4uL1Cn/qA+bgCduTdgCi3PjVnCXbqbB6yCd0CaKgtu2RnFJXeGyLoSdziV9metEvpz6Dr0LiH3i0d8Yddh3OM0H2iJj9SsINx3ISsTBk3ypvMpkI1ATbBpcwchYrwdJkwqs4hnzpgTLcwPkkScuiQAcuYXea3fOTQE4A449U1y+LFBQAXUxocVvifX80GN9A8GTwZ0bK6Tb4coJpU2JI2n91DiZmlepoPNhjVXaNKmT6Qk+qpGxKvReE2stnDXT7KbDnLsLSXRbZtYVPjak5NJOdDiqIfkiBRJpzxKma1TNQrY++D7ZNxCyDUQ6EpeD40csAWHxE9wcT338II2BSOC1nGBcos/uEUGZC/DK9IHuIiH8is+TpmH8Xtsm2Sf183WrDlxcDk4BESUIIakAbOOpkMBVpjAbKwfGLQO3FTfldr9YlN3VyAwOPwq8vr3tfyZqRt7+prB4J5zctH5vvkJziKDo8KujDlVAOFff0v3NO3xnIiyDDkw0FRYjmfTPEwNxqZsIyLywQNgFNdiJRyJj3C4okz6VQbzV4W3fBJFv7lZccghvzMteAVTzuARJkLnWXEHwIxKsk9nyPyCEU5mEM+3CJpPmOHi5IJO9cvI9RViUc/17BdKk7XkweXuQc7Kp+5+epxAGntbqOWn+nZca8TzW636RFG3G5QbsyudfIPRy4Ent2/sAAAAASUVORK5CYII=" alt="HK Terrassement">
   <div class="who" id="who"></div>
 </div>
 <main class="wrap" id="app"></main>
@@ -198,8 +228,7 @@ window.HK_EMPLOYES = [
   (function(){
     const s = document.getElementById("splash");
     if (!s) return;
-    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setTimeout(()=>{ s.classList.add("out"); setTimeout(()=>{ if(s.parentNode) s.remove(); }, 550); }, reduce ? 300 : 1100);
+    setTimeout(()=>{ if(s.parentNode) s.remove(); }, 2500);
   })();
 
   function slug(s){
@@ -506,7 +535,7 @@ window.HK_EMPLOYES = [
     try{
       if(!CFG.webhookUrl || CFG.webhookUrl.includes("REMPLACEZ")){ await new Promise(r=>setTimeout(r,450)); }
       else { const res=await fetch(CFG.webhookUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}); if(!res.ok) throw new Error("HTTP "+res.status); }
-      localStorage.setItem(sentKey(state.date),JSON.stringify(payload)); toast("Feuille envoyée"); render();
+      localStorage.setItem(sentKey(state.date),JSON.stringify(payload)); if(window.HK_NOTIF) HK_NOTIF.markDone(state.date); toast("Feuille envoyée"); render();
     }catch(e){ btn.disabled=false; btn.textContent="Envoyer"; toast("Échec de l'envoi, réessayez.",true); }
   }
 
@@ -517,6 +546,7 @@ window.HK_EMPLOYES = [
   function demarrer(){
     if(who) who.innerHTML=`<div class="nom">${employe.nom}</div><div class="role">${employe.role==="chauffeur"?"Chauffeur":"Chantier"}</div>`;
     initState(); render();
+    if(window.HK_NOTIF) HK_NOTIF.login(employe.id);
   }
   if(employe) demarrer(); else renderOnboarding();
 })();
