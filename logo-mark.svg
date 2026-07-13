@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="64 6 332 170" role="img" aria-label="HK">
-  <g fill="#F07C1E">
-    <rect x="74"  y="16" width="40" height="150" rx="2"/>
-    <rect x="154" y="16" width="40" height="150" rx="2"/>
-    <rect x="114" y="74" width="40" height="34"/>
-    <rect x="244" y="16" width="40" height="150" rx="2"/>
-    <polygon points="284,88 344,16 386,16 308,100 386,166 344,166 284,104"/>
-  </g>
-</svg>
