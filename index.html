@@ -1,57 +1,525 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#111214">
-  <title>HK Terrassement — Feuilles d'heures</title>
-  <link rel="icon" href="assets/logo.svg">
-  <link rel="stylesheet" href="assets/styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F2ED">
+<title>HK Terrassement — Ma feuille d'heures</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='64 6 332 170'%3E%3Cg fill='%23F07C1E'%3E%3Crect x='74' y='16' width='40' height='150' rx='2'/%3E%3Crect x='154' y='16' width='40' height='150' rx='2'/%3E%3Crect x='114' y='74' width='40' height='34'/%3E%3Crect x='244' y='16' width='40' height='150' rx='2'/%3E%3Cpolygon points='284,88 344,16 386,16 308,100 386,166 344,166 284,104'/%3E%3C/g%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="HK Heures">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 460'%3E%3Crect width='460' height='460' fill='%23141518'/%3E%3Cg fill='%23F07C1E' transform='translate(30,140)'%3E%3Crect x='74' y='16' width='40' height='150' rx='2'/%3E%3Crect x='154' y='16' width='40' height='150' rx='2'/%3E%3Crect x='114' y='74' width='40' height='34'/%3E%3Crect x='244' y='16' width='40' height='150' rx='2'/%3E%3Cpolygon points='284,88 344,16 386,16 308,100 386,166 344,166 284,104'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+/* =============================================================================
+   HK TERRASSEMENT — feuille d'heures (fichier unique autonome)
+   ============================================================================= */
+:root{
+  --ink:#17181B; --ink-2:#42444A; --muted:#8C877E; --line:#E7E2DA; --line-2:#D8D2C8;
+  --bg:#F4F2ED; --surface:#FFFFFF; --surface-2:#FBFAF7; --header:#141518;
+  --accent:#E8681C; --accent-ink:#B44E0F; --accent-soft:#FBEEE1;
+  --danger:#C0392B; --danger-soft:#F7E9E6; --good:#2F6B3D;
+  --radius:14px; --radius-lg:20px; --ease:cubic-bezier(.2,.7,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:"Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;line-height:1.5;
+}
+.wrap{max-width:540px;margin:0 auto;padding:18px 18px 72px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.hint{font-size:12.5px;color:var(--muted);margin-top:12px}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+/* Header */
+.topbar{background:var(--surface);color:var(--ink);padding:12px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line)}
+.topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent)}
+.topbar .brand{height:46px;display:block}
+.topbar svg.brand{height:46px}
+.topbar .who{margin-left:auto;text-align:right;line-height:1.2}
+.topbar .who .nom{font-weight:700;font-size:15px;letter-spacing:.01em}
+.topbar .who .role{font-size:10.5px;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-top:2px}
+/* Splash */
+.splash{position:fixed;inset:0;z-index:100;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;transition:opacity .5s var(--ease)}
+.splash.out{opacity:0;pointer-events:none}
+.splash .logo{width:min(60vw,280px);height:auto;animation:logoIn .7s var(--ease) both}
+.splash .bar{width:150px;height:3px;border-radius:3px;background:var(--line-2);overflow:hidden;position:relative}
+.splash .bar::after{content:"";position:absolute;top:0;bottom:0;width:40%;border-radius:3px;background:var(--accent);animation:load 1.1s var(--ease) infinite}
+@keyframes logoIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes load{0%{left:-40%}100%{left:100%}}
+@media (prefers-reduced-motion:reduce){.splash .logo{animation:none}.splash .bar::after{animation:none;left:0;width:100%}}
+/* Onglets */
+.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-top:20px}
+.tab{flex:1;text-align:center;border:none;background:transparent;font:inherit;font-weight:600;font-size:14px;color:var(--muted);padding:10px 12px;border-radius:999px;cursor:pointer;transition:.15s var(--ease)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
+/* Récap semaine */
+.wk-head{display:flex;align-items:baseline;justify-content:space-between;margin-top:22px}
+.wk-head .t{font-size:19px;font-weight:700}
+.wk-head .s{font-size:12.5px;color:var(--muted)}
+.wk-row{display:flex;align-items:center;gap:12px;padding:15px 2px;border-bottom:1px solid var(--line)}
+.wk-row:last-child{border-bottom:none}
+.wk-row .rail{width:4px;align-self:stretch;border-radius:3px;background:var(--line-2)}
+.wk-row.work .rail{background:var(--accent)}
+.wk-row.off .rail{background:var(--danger)}
+.wk-row.empty .rail{background:var(--line-2)}
+.wk-day{font-weight:700;font-size:15px;text-transform:capitalize}
+.wk-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.wk-val{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:16px}
+.wk-val.off{color:var(--danger);font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+.wk-val.empty{color:var(--muted);font-weight:500}
+/* Panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:20px;margin-top:14px}
+.panel + .panel{margin-top:12px}
+/* Barre de date */
+.daybar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-top:22px}
+.daybar .day{font-size:30px;font-weight:700;letter-spacing:-.01em;text-transform:capitalize;line-height:1.05}
+.daybar .day-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.date-input{font:inherit;font-size:14px;color:var(--ink);border:1px solid var(--line-2);border-radius:12px;padding:11px 12px;background:var(--surface);font-variant-numeric:tabular-nums}
+/* Pastilles type de journée */
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:11px 16px;font-size:14.5px;font-weight:600;cursor:pointer;transition:all .15s var(--ease)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:.15s var(--ease)}
+.pill.work .dot{background:var(--accent)}
+.pill.off .dot{background:var(--danger)}
+.pill:hover{border-color:var(--line-2);background:#fff}
+.pill[aria-pressed="true"]{background:#fff;color:var(--ink);border-color:var(--ink)}
+.pill.work[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pill.off[aria-pressed="true"]{border-color:var(--danger);box-shadow:inset 0 0 0 1px var(--danger);background:var(--danger-soft);color:var(--danger)}
+/* Champs */
+.field{display:block}
+.field .lab{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:7px;letter-spacing:.01em}
+.in,input[type=time].in,input[type=text].in,textarea.in{width:100%;font:inherit;font-size:16px;color:var(--ink);padding:13px 14px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface-2);transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
+input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.in:focus,textarea.in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);background:#fff}
+textarea.in{font-size:15px;min-height:60px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mt{margin-top:18px}
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.quick button{border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font:inherit;font-weight:600;font-size:13px;border-radius:999px;padding:9px 15px;cursor:pointer;transition:.15s var(--ease)}
+.quick button:hover{border-color:var(--ink);color:var(--ink);background:#fff}
+.quick button.primary{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+/* Bandeau absence */
+.banner{border:1px solid var(--danger);background:var(--danger-soft);color:var(--danger);border-radius:14px;padding:16px 18px;font-weight:700;font-size:15px;letter-spacing:.02em;display:flex;align-items:center;gap:12px}
+.banner .mk{width:9px;height:9px;border-radius:50%;background:var(--danger);flex:0 0 auto}
+/* Registre (totaux) */
+.ledger{background:var(--header);color:#fff;border-radius:var(--radius-lg);padding:18px 22px;margin-top:16px}
+.ledger-row{display:flex;align-items:baseline;justify-content:space-between;padding:7px 0}
+.ledger-row.total{border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:14px}
+.ledger-row .k{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#A9A49B}
+.ledger-row.total .k{color:#D8D3CB;font-weight:600}
+.ledger .big{font-size:40px;font-weight:800;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.ledger .big .u{font-size:18px;font-weight:700;color:#fff;margin-left:3px}
+.ledger-row.sub{padding:5px 0}
+.ledger-row.sub .k{color:#8B867E}
+.ledger-row.sub .v{font-size:15px;color:#EDEAE4;font-variant-numeric:tabular-nums}
+/* Bouton envoyer */
+.btn-send{width:100%;margin-top:16px;border:none;border-radius:14px;background:var(--accent);color:#fff;font:inherit;font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:17px;cursor:pointer;transition:.15s var(--ease)}
+.btn-send:hover{background:#d65e14}
+.btn-send:active{transform:translateY(1px)}
+.btn-send:disabled{background:#CFC9C0;color:#fff;cursor:not-allowed}
+/* Confirmation */
+.done{text-align:center;padding:14px 4px 6px}
+.done .tick{width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center}
+.done .tick svg{width:26px;height:26px}
+.done h3{margin:2px 0 6px;font-size:20px;font-weight:700}
+.done p{color:var(--muted);margin:3px 0;font-size:14px}
+.done .strong{color:var(--ink);font-weight:700}
+.link{display:inline-block;margin-top:16px;color:var(--accent-ink);font-weight:600;text-decoration:none;font-size:14px;border-bottom:1px solid var(--accent-soft);padding-bottom:1px}
+.link:hover{border-color:var(--accent)}
+/* Onboarding */
+.toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.toggle button{border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font:inherit;font-weight:600;font-size:15px;border-radius:12px;padding:14px;cursor:pointer;transition:.15s var(--ease)}
+.toggle button[aria-pressed="true"]{background:#fff;color:var(--ink);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+/* Divers */
+.foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:20px}
+.foot a{color:var(--accent-ink);text-decoration:none;font-weight:600}
+.hide{display:none!important}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:14px 22px;border-radius:12px;font-weight:600;font-size:14px;box-shadow:0 12px 30px rgba(0,0,0,.22);z-index:50;max-width:90%;text-align:center}
+.toast.err{background:var(--danger)}
+</style>
 </head>
 <body>
-  <main class="wrap">
-    <div class="hero">
-      <img src="assets/logo-hk.png" alt="HK Terrassement"
-           onerror="this.onerror=null;this.src='assets/logo.svg'">
-      <p id="intro"></p>
-    </div>
-    <div class="emplist" id="emplist"></div>
-    <div class="foot">HK Terrassement — feuille d'heures</div>
-  </main>
+<div class="splash" id="splash">
+  <img class="logo" src="data:image/png;base64,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" alt="HK Terrassement">
+  <div class="bar"></div>
+</div>
+<div class="topbar">
+  <img class="brand" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAACiAQMAAABF3dItAAAABlBMVEX////wfB6Zg6s3AAAEX0lEQVR42sWYv47dRBTGfzPX5FpilXW5xSoZRUh0tKEIxCAhKHgDmuUttlglE4jQljwAxUq8QESVChkUQUGzogE6A6soFfJdUfgmvj4UHttje+xiVygu1vZ+/o5nzp/vHF9EpIbbIpJxW0QsIpLhDg2o9sbg37Xw9MiWYa4M62uxrw/beTh6zUtbgOPrGpers5PXuG/zP7+7PrlytqSwWzb+YpUvwXc4WIB3nEYL8MWB6FnYcnZ0+sE8e/elLXM7C+tDbJHOwiqPjstln1dmBlZbA9TJHPuFoUTiQD026SBUa+ZWLmufNjV+DP8ofpwx/qgGIA+zd+4fmzB8MUyYASyab21TguXRFL6U975pXmxdqQ3gc57lbq1VHHr32p1XNgrBDecuJ+0ORETaZgHrn9ci1UOR7EGIvf0oZhf1hainkrkStU1cvxjDYgcSMoaL1mN/huD94XMjWBWt1bi0U/h9T9PTEZyx6tpbUlZj45Z7vmaaIez6qnF/6xFbjQKTBFPRAndP2jdEo40CqO+S+y54UbeWou/NX0PcIHras9n2Hunhs+7qGeTjKukbxMu030kH12l79RxAqyG76p4zVcO1Ply2Ovprc/qK1Ic3bZE96QrVh1sV/cX6baGDXUHLMZR9unXw4+b0d7bYDd7pAxB7sJOiTRHuJU30+a3dpotWC1cJGeyeerHT/rsNwCs706hKsHDqu1j57HTQoOrdkO2vOAepLNgezq2EBgw9TWM/t3R3Vw/hvNcWEVlJBfeb6xxgXyTzfV4N2aVvXCbKXIHx2eWoh0PSwXUcnnx0F5HpYBP7xovQBODg0gTm5Mhn54z9oju4SF3Men8XnvHcL+B2o8o5tQIRm7VObTywFrEtW3mp0LstDUtPn7u6Dbuo0RgsYKbszLOTtHA0zgb3oB7PrtbzS+wZD1xFU23JBzFamPZKtCc9gXRSS+zaN170Z9Wlk9WwnTeQaig1QB6HBkoNSBreQobRTdcfTii2dcEtDQUl8P20Goq/lO48lkytv2l068bTgNv08gi9NdolgOyZPjRdSmd6moOe10W7UqxNAE7QvJwlH9R15DZavbs//Dy4eYmRE835NIwAfwA8bTf2+8jwXmJJ41y7fv5ktP7PHqdNxJpJ3RYD/O29D81DQLOO4FAGkpPw6Sd3AIyGVxY91tSf3jJJk6twPBXcC0MMBRq4gdRuRuqmRogedRX6fBi5uCmlz0k1QFz9O8qkEhRnLgMjiLKxckCT56FuWQN2vogE+Li80cGxHQ6MFsy6DLCzPir9K/ejyUNvbFQxl6k5RN7Sbo0aa1PPuQ7xGr9oTzzuTetXNXkeTnHA9sJ1HBCW1HPqyKzgtzm1n4w0yALrXrCLqfN6r+2F9hffXPzIjUKCVHZL0IdoSecEF1Wi+WHeL0dECvWgnBHcAo3liyrwkd2cNEcBqy7bMjSHM0GxiEWzKpn5nesSdCO2GzX57eHcObUKszcKiFRoR93xH5TBbjrFcv+EAAAAAElFTkSuQmCC" alt="HK Terrassement">
+  <div class="who" id="who"></div>
+</div>
+<main class="wrap" id="app"></main>
 
-  <script src="config/employes.js"></script>
-  <script>
-    (function () {
-      var list = document.getElementById("emplist");
-      var intro = document.getElementById("intro");
-      var emps = window.HK_EMPLOYES || [];
+<script>
+/* =============================================================================
+   ⚙️  CONFIG — SEULE PARTIE À MODIFIER
+   -----------------------------------------------------------------------------
+   1) Collez l'URL de votre webhook (Make.com ou Apps Script /exec) ci-dessous.
+   2) (Optionnel) Remplissez HK_EMPLOYES pour un menu déroulant de noms.
+   ============================================================================= */
+window.HK_CONFIG = {
+  webhookUrl: "https://hook.eu1.make.com/qjruii1ushxp5utol2wf6xpzauc4l1dj",
+  timezone: "Europe/Paris",
+  heuresAttendues: { lundi:8, mardi:8, mercredi:8, jeudi:8, vendredi:7, samedi:0, dimanche:0 },
+  heuresPayeesMois: 169,
+  journeeStandard: {
+    semaine:  { matineeDebut:"08:00", matineeFin:"12:00", apremDebut:"13:00", apremFin:"17:00" },
+    vendredi: { matineeDebut:"08:00", matineeFin:"12:00", apremDebut:"13:00", apremFin:"16:00" }
+  }
+};
+window.HK_EMPLOYES = [
+  // { id:"jean-dupont", nom:"Jean Dupont", role:"chantier" },
+  // { id:"paul-martin", nom:"Paul Martin", role:"chauffeur" },
+];
 
-      if (!emps.length) {
-        // Liste non renseignée : chacun s'identifie dans l'appli (mémorisé).
-        intro.textContent = "Feuille d'heures";
-        var a = document.createElement("a");
-        a.className = "btn-send";
-        a.href = "app.html";
-        a.style.display = "block";
-        a.style.textAlign = "center";
-        a.style.textDecoration = "none";
-        a.textContent = "Ouvrir";
-        list.appendChild(a);
-        return;
+/* =============================================================================
+   APPLICATION (ne rien modifier ci-dessous)
+   ============================================================================= */
+(function () {
+  "use strict";
+  const CFG = window.HK_CONFIG || {};
+  const EMPLOYES = window.HK_EMPLOYES || [];
+  const JOURS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+  const STATUTS = [
+    { id:"travail",  label:"Travaillé", cat:"work" },
+    { id:"conge",    label:"Congé",     cat:"off"  },
+    { id:"absence",  label:"Absence",   cat:"off"  },
+    { id:"repos",    label:"Repos",     cat:"off"  },
+    { id:"vacances", label:"Vacances",  cat:"off"  },
+    { id:"maladie",  label:"Maladie",   cat:"off"  }
+  ];
+  const STATUTS_SPECIAUX = ["conge","absence","repos","vacances","maladie"];
+  const CLE_IDENTITE = "hk_identite";
+  const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  const app = document.getElementById("app");
+  const who = document.getElementById("who");
+
+  (function(){
+    const s = document.getElementById("splash");
+    if (!s) return;
+    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(()=>{ s.classList.add("out"); setTimeout(()=>{ if(s.parentNode) s.remove(); }, 550); }, reduce ? 300 : 1100);
+  })();
+
+  function slug(s){
+    return s.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g,"")
+      .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  }
+  function identiteURL(){
+    const p = new URLSearchParams(location.search);
+    const id = p.get("id") || (location.hash ? decodeURIComponent(location.hash.replace(/^#/,"")) : "");
+    if (!id) return null;
+    const e = EMPLOYES.find(x => x.id === id);
+    return e ? { id:e.id, nom:e.nom, role:e.role } : null;
+  }
+  function identiteSauvee(){ try { return JSON.parse(localStorage.getItem(CLE_IDENTITE)); } catch(e){ return null; } }
+  function sauverIdentite(idt){ localStorage.setItem(CLE_IDENTITE, JSON.stringify(idt)); }
+
+  let employe = identiteURL() || identiteSauvee();
+  if (employe && identiteURL()) sauverIdentite(employe);
+
+  function renderOnboarding(){
+    if (who) who.innerHTML = "";
+    const options = EMPLOYES.map(e => `<option value="${e.id}">${e.nom}</option>`).join("");
+    app.innerHTML = `
+      <div class="panel" style="margin-top:26px">
+        <div class="eyebrow">Feuille d'heures</div>
+        ${EMPLOYES.length ? `
+        <div class="field mt">
+          <span class="lab">Je suis</span>
+          <select class="in" id="ob-liste">
+            <option value="">Choisir mon nom</option>${options}
+            <option value="__autre">Autre…</option>
+          </select>
+        </div>` : ""}
+        <div id="ob-manuel" class="${EMPLOYES.length ? "hide" : ""}">
+          <div class="field ${EMPLOYES.length ? "mt" : ""}">
+            <span class="lab">Nom et prénom</span>
+            <input type="text" class="in" id="ob-nom" placeholder="Nom et prénom" autocomplete="name">
+          </div>
+          <div class="field mt">
+            <span class="lab">Poste</span>
+            <div class="toggle">
+              <button type="button" id="ob-chantier" aria-pressed="true">Chantier</button>
+              <button type="button" id="ob-chauffeur" aria-pressed="false">Chauffeur</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn-send" id="ob-ok" style="margin-top:22px">Continuer</button>
+        <div class="hint" style="text-align:center">Mémorisé sur cet appareil</div>
+      </div>`;
+
+    let role = "chantier";
+    const manuel = document.getElementById("ob-manuel");
+    const liste = document.getElementById("ob-liste");
+    const bC = document.getElementById("ob-chantier");
+    const bK = document.getElementById("ob-chauffeur");
+    bC.addEventListener("click", ()=>{ role="chantier"; bC.setAttribute("aria-pressed","true"); bK.setAttribute("aria-pressed","false"); });
+    bK.addEventListener("click", ()=>{ role="chauffeur"; bK.setAttribute("aria-pressed","true"); bC.setAttribute("aria-pressed","false"); });
+    if (liste) liste.addEventListener("change", e=>{ manuel.classList.toggle("hide", e.target.value !== "__autre"); });
+
+    document.getElementById("ob-ok").addEventListener("click", ()=>{
+      if (liste && liste.value && liste.value !== "__autre"){
+        const e = EMPLOYES.find(x=>x.id===liste.value);
+        employe = { id:e.id, nom:e.nom, role:e.role };
+      } else {
+        const nom = (document.getElementById("ob-nom").value || "").trim();
+        if (nom.length < 2) return toast("Saisissez votre nom.", true);
+        employe = { id:slug(nom), nom:nom, role:role };
       }
+      sauverIdentite(employe); demarrer();
+    });
+  }
 
-      intro.textContent = "Sélectionnez votre nom.";
-      emps.forEach(function (e) {
-        var a = document.createElement("a");
-        a.className = "emp " + e.role;
-        a.href = "app.html?id=" + encodeURIComponent(e.id);
-        a.innerHTML =
-          '<div><div class="nom">' + e.nom + '</div>' +
-          '<div class="role">' + (e.role === "chauffeur" ? "Chauffeur camion" : "Chantier") + '</div></div>' +
-          '<span class="arrow">›</span>';
-        list.appendChild(a);
-      });
-    })();
-  </script>
+  function todayISO(){ const d=new Date(),off=d.getTimezoneOffset()*60000; return new Date(d-off).toISOString().slice(0,10); }
+  function jourNom(iso){ return JOURS[new Date(iso+"T12:00:00").getDay()]; }
+  function jourFrLong(iso){ return new Date(iso+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"}); }
+  function dureeH(a,b){ if(!a||!b) return 0; const[ha,ma]=a.split(":").map(Number),[hb,mb]=b.split(":").map(Number);
+    const d=((hb*60+mb)-(ha*60+ma))/60; return d>0?d:0; }
+  function heuresAttenduesJour(iso){ const j=jourNom(iso); return (CFG.heuresAttendues&&CFG.heuresAttendues[j]!=null)?CFG.heuresAttendues[j]:8; }
+  function fmtH(h){ const s=Math.round(h*100)/100; return (Number.isInteger(s)?s:s.toFixed(2).replace(/0$/,"")); }
+  function fmtHU(h){ return fmtH(h)+" h"; }
+  function fmtHM(h){ if(h<=0) return "0 h"; const t=Math.round(h*60),hh=Math.floor(t/60),mm=t%60; return hh+" h"+(mm?(" "+String(mm).padStart(2,"0")):""); }
+  const sentKey = iso => "hk_sent_"+employe.id+"_"+iso;
+
+  // Ligne cible dans le modèle Excel : 5 blocs de 5 jours (Lun→Ven),
+  // débuts lignes 2/13/24/35/46. Samedi/dimanche non gérés (="").
+  function ligneModele(iso){
+    const d = new Date(iso+"T12:00:00");
+    const wd = (d.getDay()+6)%7;                    // Lun=0 … Dim=6
+    if (wd > 4) return "";                           // week-end : hors modèle
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    const firstWd = (first.getDay()+6)%7;
+    const mondayFirst = new Date(first); mondayFirst.setDate(1 - firstWd);
+    const monday = new Date(d); monday.setDate(d.getDate() - wd);
+    const bloc = Math.round((monday - mondayFirst)/(7*86400000));
+    const debuts = [2,13,24,35,46];
+    return (bloc>=0 && bloc<=4) ? (debuts[bloc] + wd) : "";
+  }
+
+  let estChauffeur, state, vue = "jour";
+  function initState(){
+    estChauffeur = employe.role === "chauffeur";
+    state = { date:todayISO(), statut:"travail", chantier:"", trajetAllerDep:"", trajetAllerArr:"",
+      matineeDebut:"", matineeFin:"", apremDebut:"", apremFin:"", trajetRetourDep:"", trajetRetourArr:"", commentaire:"" };
+  }
+  function heuresJournee(){ if(state.statut!=="travail") return 0; return dureeH(state.matineeDebut,state.matineeFin)+dureeH(state.apremDebut,state.apremFin); }
+  function heuresTrajet(){ if(state.statut!=="travail"||estChauffeur) return 0; return dureeH(state.trajetAllerDep,state.trajetAllerArr)+dureeH(state.trajetRetourDep,state.trajetRetourArr); }
+  function pauseMidi(){ return dureeH(state.matineeFin,state.apremDebut); }
+
+  function renderNav(){
+    return `<div class="tabs">
+      <button class="tab" data-vue="jour" aria-selected="${vue==='jour'}">Ma journée</button>
+      <button class="tab" data-vue="semaine" aria-selected="${vue==='semaine'}">Ma semaine</button>
+    </div>`;
+  }
+  function bindShell(){
+    document.querySelectorAll(".tab[data-vue]").forEach(b=>b.addEventListener("click",()=>{ vue=b.dataset.vue; render(); }));
+    const sw=document.getElementById("f-switch"); if(sw) sw.addEventListener("click",switchUser);
+  }
+  function render(){
+    if(vue==="semaine"){ app.innerHTML = renderNav()+semaineView(); bindShell(); return; }
+    const deja = localStorage.getItem(sentKey(state.date));
+    if(deja){ app.innerHTML = renderNav()+doneView(JSON.parse(deja)); bindShell(); bindDone(); return; }
+    app.innerHTML = renderNav()+dayView(); bindShell(); bind();
+  }
+  function dayView(){
+    const special = STATUTS_SPECIAUX.includes(state.statut);
+    return `
+      <div class="daybar">
+        <div>
+          <div class="eyebrow" style="margin-bottom:6px">Journée</div>
+          <div class="day">${jourNom(state.date)}</div>
+          <div class="day-sub">${jourFrLong(state.date)}</div>
+        </div>
+        <input type="date" class="date-input" id="f-date" value="${state.date}" max="${todayISO()}">
+      </div>
+
+      <div class="panel">
+        <div class="eyebrow">Type de journée</div>
+        <div class="seg">
+          ${STATUTS.map(s=>`<button class="pill ${s.cat}" data-statut="${s.id}" aria-pressed="${state.statut===s.id}">
+            <span class="dot"></span><span>${s.label}</span></button>`).join("")}
+        </div>
+      </div>
+
+      ${special ? renderBanner() : renderTravail()}
+
+      <button class="btn-send" id="f-send">Envoyer</button>
+      <div class="foot">${employe.nom} · <a href="#" id="f-switch">changer</a></div>`;
+  }
+
+  function renderBanner(){
+    const s=STATUTS.find(x=>x.id===state.statut);
+    return `<div class="panel">
+      <div class="banner"><span class="mk"></span>Journée déclarée : ${s.label.toUpperCase()}</div>
+      <div class="field mt"><span class="lab">Commentaire (facultatif)</span>
+      <textarea class="in" id="f-com" placeholder="Précision éventuelle">${state.commentaire}</textarea></div></div>`;
+  }
+
+  function paire(lD,iD,vD,lF,iF,vF){
+    return `<div class="two">
+      <div class="field"><span class="lab">${lD}</span><input type="time" class="in" id="${iD}" value="${vD}"></div>
+      <div class="field"><span class="lab">${lF}</span><input type="time" class="in" id="${iF}" value="${vF}"></div></div>`;
+  }
+
+  function renderTravail(){
+    const attendu=heuresAttenduesJour(state.date), hj=heuresJournee(), ht=heuresTrajet(), pm=pauseMidi();
+    return `
+      <div class="panel">
+        <div class="eyebrow">Chantier</div>
+        <input type="text" class="in" id="f-chantier" placeholder="Nom du chantier" value="${state.chantier}">
+        <div class="quick">
+          <button class="primary" id="q-standard">Journée standard · ${attendu} h</button>
+          <button id="q-clear">Effacer</button></div>
+      </div>
+      ${estChauffeur?"":`<div class="panel"><div class="eyebrow">Trajet aller</div>
+        ${paire("Départ","f-tad",state.trajetAllerDep,"Arrivée","f-taa",state.trajetAllerArr)}</div>`}
+      <div class="panel">
+        <div class="eyebrow">Matinée</div>${paire("Début","f-md",state.matineeDebut,"Fin","f-mf",state.matineeFin)}
+        <div class="eyebrow mt">Après-midi</div>${paire("Début","f-ad",state.apremDebut,"Fin","f-af",state.apremFin)}
+        <div class="hint">Pause de midi&nbsp;: <b id="r-pause" style="color:var(--ink-2)">${fmtHM(pm)}</b></div>
+      </div>
+      ${estChauffeur?"":`<div class="panel"><div class="eyebrow">Trajet retour</div>
+        ${paire("Départ","f-trd",state.trajetRetourDep,"Arrivée","f-tra",state.trajetRetourArr)}</div>`}
+      <div class="panel"><div class="field"><span class="lab">Commentaire (facultatif)</span>
+        <textarea class="in" id="f-com" placeholder="Remarque">${state.commentaire}</textarea></div></div>
+
+      <div class="ledger">
+        <div class="ledger-row total">
+          <span class="k">Total journée</span>
+          <span class="big num" id="r-journee">${fmtH(hj)}<span class="u">h</span></span>
+        </div>
+        <div class="ledger-row sub"><span class="k">Attendu</span><span class="v">${attendu} h</span></div>
+        ${estChauffeur?"":`<div class="ledger-row sub"><span class="k">Trajet</span><span class="v" id="r-trajet">${fmtHU(ht)}</span></div>`}
+      </div>`;
+  }
+
+  function doneView(payload){
+    return `
+      <div class="panel" style="margin-top:16px"><div class="done">
+        <div class="tick">${TICK}</div>
+        <h3>Feuille envoyée</h3>
+        <p>${jourFrLong(state.date)}</p>
+        <p>Envoyée à <span class="strong">${payload._envoyeHeure||"—"}</span></p>
+        ${payload.statut==="travail"
+          ? `<p><span class="strong">${fmtHU(payload.heuresJournee)}</span> de travail${payload.heuresTrajet?` · ${fmtHU(payload.heuresTrajet)} trajet`:""}</p>`
+          : `<p><span class="strong" style="color:var(--danger)">${payload.statutLabel}</span></p>`}
+        <a class="link" id="f-autre" href="#">Remplir un autre jour</a>
+      </div></div>
+      <div class="foot">${employe.nom} · <a href="#" id="f-switch">changer</a></div>`;
+  }
+  function bindDone(){
+    document.getElementById("f-autre").addEventListener("click", e=>{ e.preventDefault();
+      const d=prompt("Date à remplir (AAAA-MM-JJ) :", todayISO());
+      if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)){ state.date=d; render(); }});
+  }
+
+  function isoOf(d){ const off=d.getTimezoneOffset()*60000; return new Date(d-off).toISOString().slice(0,10); }
+  function weekMonday(iso){ const d=new Date(iso+"T12:00:00"),dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); return isoOf(d); }
+  function addDays(iso,n){ const d=new Date(iso+"T12:00:00"); d.setDate(d.getDate()+n); return isoOf(d); }
+  function fmtJourCourt(iso){ return new Date(iso+"T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"}); }
+
+  function semaineView(){
+    const monday=weekMonday(todayISO()), auj=todayISO();
+    let totalTrav=0, totalTrajet=0, attenduTot=0, rows="";
+    for(let i=0;i<7;i++){
+      const iso=addDays(monday,i), jn=JOURS[new Date(iso+"T12:00:00").getDay()], att=heuresAttenduesJour(iso);
+      const raw=localStorage.getItem(sentKey(iso)), entry=raw?JSON.parse(raw):null;
+      if(i===6 && !entry) continue;
+      attenduTot+=att;
+      let cls,val,sub="";
+      if(entry){
+        if(entry.statut==="travail"){ cls="work"; totalTrav+=entry.heuresJournee||0; totalTrajet+=entry.heuresTrajet||0;
+          val=`<span class="wk-val">${fmtHU(entry.heuresJournee||0)}</span>`;
+          sub=entry.chantier?`<div class="wk-sub">${entry.chantier}</div>`
+             :(entry.heuresTrajet?`<div class="wk-sub">trajet ${fmtHU(entry.heuresTrajet)}</div>`:"");
+        } else { cls="off"; val=`<span class="wk-val off">${entry.statutLabel}</span>`; }
+      } else { cls="empty"; val=`<span class="wk-val empty">—</span>`;
+        sub = iso<=auj ? `<div class="wk-sub">à remplir</div>` : ""; }
+      rows+=`<div class="wk-row ${cls}"><span class="rail"></span>
+        <div><div class="wk-day">${jn}</div>${sub}</div>${val}</div>`;
+    }
+    return `
+      <div class="wk-head"><div><div class="t">Ma semaine</div>
+        <div class="s">du ${fmtJourCourt(monday)} au ${fmtJourCourt(addDays(monday,5))}</div></div></div>
+      <div class="panel">${rows}</div>
+      <div class="ledger">
+        <div class="ledger-row total"><span class="k">Total semaine</span>
+          <span class="big num">${fmtH(totalTrav)}<span class="u">h</span></span></div>
+        <div class="ledger-row sub"><span class="k">Attendu</span><span class="v">${attenduTot} h</span></div>
+        ${totalTrajet?`<div class="ledger-row sub"><span class="k">Trajet</span><span class="v">${fmtHU(totalTrajet)}</span></div>`:""}
+      </div>
+      <div class="foot">${employe.nom} · <a href="#" id="f-switch">changer</a></div>`;
+  }
+
+  function bind(){
+    document.getElementById("f-date").addEventListener("change", e=>{ state.date=e.target.value||todayISO(); render(); });
+    document.querySelectorAll(".pill[data-statut]").forEach(b=>b.addEventListener("click",()=>{ state.statut=b.dataset.statut; render(); }));
+    const map=[["f-chantier","chantier"],["f-tad","trajetAllerDep"],["f-taa","trajetAllerArr"],["f-md","matineeDebut"],
+      ["f-mf","matineeFin"],["f-ad","apremDebut"],["f-af","apremFin"],["f-trd","trajetRetourDep"],["f-tra","trajetRetourArr"],["f-com","commentaire"]];
+    map.forEach(([id,key])=>{ const el=document.getElementById(id); if(el) el.addEventListener("input",e=>{ state[key]=e.target.value; refreshRecap(); }); });
+    const qs=document.getElementById("q-standard"), qc=document.getElementById("q-clear");
+    if(qs) qs.addEventListener("click",()=>{ const std=jourNom(state.date)==="vendredi"?CFG.journeeStandard.vendredi:CFG.journeeStandard.semaine;
+      Object.assign(state,{matineeDebut:std.matineeDebut,matineeFin:std.matineeFin,apremDebut:std.apremDebut,apremFin:std.apremFin}); render(); });
+    if(qc) qc.addEventListener("click",()=>{ Object.assign(state,{trajetAllerDep:"",trajetAllerArr:"",matineeDebut:"",matineeFin:"",
+      apremDebut:"",apremFin:"",trajetRetourDep:"",trajetRetourArr:""}); render(); });
+    document.getElementById("f-send").addEventListener("click", envoyer);
+  }
+  function refreshRecap(){
+    const j=document.getElementById("r-journee"); if(j) j.innerHTML=fmtH(heuresJournee())+'<span class="u">h</span>';
+    const t=document.getElementById("r-trajet"); if(t) t.textContent=fmtHU(heuresTrajet());
+    const p=document.getElementById("r-pause"); if(p) p.textContent=fmtHM(pauseMidi());
+  }
+  function switchUser(e){ if(e) e.preventDefault();
+    if(confirm("Changer d'utilisateur sur cet appareil ?")){ localStorage.removeItem(CLE_IDENTITE); location.hash=""; location.reload(); } }
+
+  function validate(){
+    if(localStorage.getItem(sentKey(state.date))) return "Feuille déjà envoyée pour cette date.";
+    if(state.statut==="travail"){
+      if(heuresJournee()<=0) return "Renseignez au moins la matinée ou l'après-midi.";
+      if((state.matineeDebut&&state.matineeFin&&dureeH(state.matineeDebut,state.matineeFin)<=0) ||
+         (state.apremDebut&&state.apremFin&&dureeH(state.apremDebut,state.apremFin)<=0)) return "Une heure de fin est avant l'heure de début.";
+    }
+    return null;
+  }
+  function buildPayload(){
+    const now=new Date();
+    const envoyeHeure=now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",timeZone:CFG.timezone||"Europe/Paris"});
+    const st=STATUTS.find(s=>s.id===state.statut), trav=state.statut==="travail", attendu=heuresAttenduesJour(state.date);
+    const hj=heuresJournee(), ht=heuresTrajet();
+    return { source:"app-hk", employeId:employe.id, employeNom:employe.nom, role:employe.role, date:state.date, ligneModele:ligneModele(state.date),
+      jourSemaine:jourNom(state.date), statut:state.statut, statutLabel:st?st.label:state.statut,
+      chantier:trav?state.chantier:"", trajetAllerDepart:(trav&&!estChauffeur)?state.trajetAllerDep:"",
+      trajetAllerArrivee:(trav&&!estChauffeur)?state.trajetAllerArr:"", matineeDebut:trav?state.matineeDebut:"",
+      matineeFin:trav?state.matineeFin:"", apresMidiDebut:trav?state.apremDebut:"", apresMidiFin:trav?state.apremFin:"",
+      trajetRetourDepart:(trav&&!estChauffeur)?state.trajetRetourDep:"", trajetRetourArrivee:(trav&&!estChauffeur)?state.trajetRetourArr:"",
+      pauseMidiHeures:trav?Math.round(pauseMidi()*100)/100:0, heuresJournee:Math.round(hj*100)/100,
+      heuresTrajet:Math.round(ht*100)/100, heuresAttendues:attendu, heuresSupp:trav?Math.round((hj-attendu)*100)/100:0,
+      commentaire:state.commentaire||"", envoyeLe:now.toISOString(), _envoyeHeure:envoyeHeure };
+  }
+  async function envoyer(){
+    const err=validate(); if(err) return toast(err,true);
+    const btn=document.getElementById("f-send"); btn.disabled=true; btn.textContent="Envoi…";
+    const payload=buildPayload();
+    try{
+      if(!CFG.webhookUrl || CFG.webhookUrl.includes("REMPLACEZ")){ await new Promise(r=>setTimeout(r,450)); }
+      else { const res=await fetch(CFG.webhookUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}); if(!res.ok) throw new Error("HTTP "+res.status); }
+      localStorage.setItem(sentKey(state.date),JSON.stringify(payload)); toast("Feuille envoyée"); render();
+    }catch(e){ btn.disabled=false; btn.textContent="Envoyer"; toast("Échec de l'envoi, réessayez.",true); }
+  }
+
+  let toastTimer;
+  function toast(msg,isErr){ let t=document.querySelector(".toast"); if(!t){ t=document.createElement("div"); document.body.appendChild(t); }
+    t.className="toast"+(isErr?" err":""); t.textContent=msg; clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.remove(),3200); }
+
+  function demarrer(){
+    if(who) who.innerHTML=`<div class="nom">${employe.nom}</div><div class="role">${employe.role==="chauffeur"?"Chauffeur":"Chantier"}</div>`;
+    initState(); render();
+  }
+  if(employe) demarrer(); else renderOnboarding();
+})();
+</script>
 </body>
 </html>
