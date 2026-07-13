@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111214">
+  <title>HK Terrassement — Feuilles d'heures</title>
+  <link rel="icon" href="assets/logo.svg">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <div class="hero">
+      <img src="assets/logo-hk.png" alt="HK Terrassement"
+           onerror="this.onerror=null;this.src='assets/logo.svg'">
+      <p id="intro"></p>
+    </div>
+    <div class="emplist" id="emplist"></div>
+    <div class="foot">HK Terrassement — feuille d'heures</div>
+  </main>
+
+  <script src="config/employes.js"></script>
+  <script>
+    (function () {
+      var list = document.getElementById("emplist");
+      var intro = document.getElementById("intro");
+      var emps = window.HK_EMPLOYES || [];
+
+      if (!emps.length) {
+        // Liste non renseignée : chacun s'identifie dans l'appli (mémorisé).
+        intro.textContent = "Feuille d'heures";
+        var a = document.createElement("a");
+        a.className = "btn-send";
+        a.href = "app.html";
+        a.style.display = "block";
+        a.style.textAlign = "center";
+        a.style.textDecoration = "none";
+        a.textContent = "Ouvrir";
+        list.appendChild(a);
+        return;
+      }
+
+      intro.textContent = "Sélectionnez votre nom.";
+      emps.forEach(function (e) {
+        var a = document.createElement("a");
+        a.className = "emp " + e.role;
+        a.href = "app.html?id=" + encodeURIComponent(e.id);
+        a.innerHTML =
+          '<div><div class="nom">' + e.nom + '</div>' +
+          '<div class="role">' + (e.role === "chauffeur" ? "Chauffeur camion" : "Chantier") + '</div></div>' +
+          '<span class="arrow">›</span>';
+        list.appendChild(a);
+      });
+    })();
+  </script>
+</body>
+</html>
