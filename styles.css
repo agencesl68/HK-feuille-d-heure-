@@ -1,0 +1,226 @@
+/* =============================================================================
+   HK TERRASSEMENT — feuille d'heures
+   Direction : « registre de chantier » — papier chaud, cartes à filet fin,
+   accent orange précis, totaux en gros chiffres. Sobre, dense, premium.
+   ============================================================================= */
+:root{
+  --ink:#17181B;
+  --ink-2:#42444A;
+  --muted:#8C877E;
+  --line:#E7E2DA;
+  --line-2:#D8D2C8;
+  --bg:#F4F2ED;
+  --surface:#FFFFFF;
+  --surface-2:#FBFAF7;
+  --header:#141518;
+  --accent:#E8681C;
+  --accent-ink:#B44E0F;
+  --accent-soft:#FBEEE1;
+  --danger:#C0392B;
+  --danger-soft:#F7E9E6;
+  --good:#2F6B3D;
+  --radius:14px;
+  --radius-lg:20px;
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:"Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;line-height:1.5;
+}
+.wrap{max-width:540px;margin:0 auto;padding:18px 18px 72px}
+
+/* -- Eyebrows / labels -------------------------------------------------------- */
+.eyebrow{
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 12px;
+}
+.hint{font-size:12.5px;color:var(--muted);margin-top:12px}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* -- Header ------------------------------------------------------------------- */
+.topbar{
+  background:var(--surface);color:var(--ink);
+  padding:12px 18px;display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line);
+}
+.topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent)}
+.topbar .brand{height:46px;display:block}
+.topbar svg.brand{height:46px}
+.topbar .who{margin-left:auto;text-align:right;line-height:1.2}
+.topbar .who .nom{font-weight:700;font-size:15px;letter-spacing:.01em}
+.topbar .who .role{font-size:10.5px;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-top:2px}
+
+/* -- Écran de chargement (splash) --------------------------------------------- */
+.splash{
+  position:fixed;inset:0;z-index:100;background:var(--surface);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;
+  transition:opacity .5s var(--ease);
+}
+.splash.out{opacity:0;pointer-events:none}
+.splash .logo{width:min(60vw,280px);height:auto;animation:logoIn .7s var(--ease) both}
+.splash .bar{width:150px;height:3px;border-radius:3px;background:var(--line-2);overflow:hidden;position:relative}
+.splash .bar::after{content:"";position:absolute;top:0;bottom:0;width:40%;border-radius:3px;background:var(--accent);animation:load 1.1s var(--ease) infinite}
+@keyframes logoIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes load{0%{left:-40%}100%{left:100%}}
+@media (prefers-reduced-motion:reduce){
+  .splash .logo{animation:none}
+  .splash .bar::after{animation:none;left:0;width:100%}
+}
+
+/* -- Onglets (Jour / Semaine) ------------------------------------------------- */
+.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:999px;padding:4px;margin-top:20px}
+.tab{flex:1;text-align:center;border:none;background:transparent;font:inherit;font-weight:600;
+  font-size:14px;color:var(--muted);padding:10px 12px;border-radius:999px;cursor:pointer;transition:.15s var(--ease)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
+
+/* -- Récap semaine ------------------------------------------------------------ */
+.wk-head{display:flex;align-items:baseline;justify-content:space-between;margin-top:22px}
+.wk-head .t{font-size:19px;font-weight:700}
+.wk-head .s{font-size:12.5px;color:var(--muted)}
+.wk-row{display:flex;align-items:center;gap:12px;padding:15px 2px;border-bottom:1px solid var(--line)}
+.wk-row:last-child{border-bottom:none}
+.wk-row .rail{width:4px;align-self:stretch;border-radius:3px;background:var(--line-2)}
+.wk-row.work .rail{background:var(--accent)}
+.wk-row.off  .rail{background:var(--danger)}
+.wk-row.empty .rail{background:var(--line-2)}
+.wk-day{font-weight:700;font-size:15px;text-transform:capitalize}
+.wk-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.wk-val{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:16px}
+.wk-val.off{color:var(--danger);font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+.wk-val.empty{color:var(--muted);font-weight:500}
+
+/* -- Panels ------------------------------------------------------------------- */
+.panel{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
+  padding:20px;margin-top:14px;
+}
+.panel + .panel{margin-top:12px}
+
+/* -- Barre de date ------------------------------------------------------------ */
+.daybar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-top:22px}
+.daybar .day{font-size:30px;font-weight:700;letter-spacing:-.01em;text-transform:capitalize;line-height:1.05}
+.daybar .day-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.date-input{
+  font:inherit;font-size:14px;color:var(--ink);
+  border:1px solid var(--line-2);border-radius:12px;padding:11px 12px;background:var(--surface);
+  font-variant-numeric:tabular-nums;
+}
+
+/* -- Sélecteur de type de journée (pastilles) --------------------------------- */
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.pill{
+  display:inline-flex;align-items:center;gap:9px;
+  border:1px solid var(--line-2);background:var(--surface-2);
+  color:var(--ink-2);border-radius:999px;padding:11px 16px;
+  font-size:14.5px;font-weight:600;cursor:pointer;transition:all .15s var(--ease);
+}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:.15s var(--ease)}
+.pill.work .dot{background:var(--accent)}
+.pill.off  .dot{background:var(--danger)}
+.pill:hover{border-color:var(--line-2);background:#fff}
+.pill[aria-pressed="true"]{background:#fff;color:var(--ink);border-color:var(--ink)}
+.pill.work[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pill.off[aria-pressed="true"]{border-color:var(--danger);box-shadow:inset 0 0 0 1px var(--danger);background:var(--danger-soft);color:var(--danger)}
+
+/* -- Champs ------------------------------------------------------------------- */
+.field{display:block}
+.field .lab{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:7px;letter-spacing:.01em}
+.in,input[type=time].in,input[type=text].in,textarea.in{
+  width:100%;font:inherit;font-size:16px;color:var(--ink);
+  padding:13px 14px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface-2);
+  transition:border-color .15s var(--ease),box-shadow .15s var(--ease);
+}
+input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.in:focus,textarea.in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);background:#fff}
+textarea.in{font-size:15px;min-height:60px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mt{margin-top:18px}
+
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.quick button{
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);
+  font:inherit;font-weight:600;font-size:13px;border-radius:999px;padding:9px 15px;cursor:pointer;transition:.15s var(--ease);
+}
+.quick button:hover{border-color:var(--ink);color:var(--ink);background:#fff}
+.quick button.primary{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+
+/* -- Bandeau absence ---------------------------------------------------------- */
+.banner{
+  border:1px solid var(--danger);background:var(--danger-soft);color:var(--danger);
+  border-radius:14px;padding:16px 18px;font-weight:700;font-size:15px;letter-spacing:.02em;
+  display:flex;align-items:center;gap:12px;
+}
+.banner .mk{width:9px;height:9px;border-radius:50%;background:var(--danger);flex:0 0 auto}
+
+/* -- Registre (totaux) -------------------------------------------------------- */
+.ledger{
+  background:var(--header);color:#fff;border-radius:var(--radius-lg);
+  padding:18px 22px;margin-top:16px;
+}
+.ledger-row{display:flex;align-items:baseline;justify-content:space-between;padding:7px 0}
+.ledger-row.total{border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:14px}
+.ledger-row .k{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#A9A49B}
+.ledger-row.total .k{color:#D8D3CB;font-weight:600}
+.ledger .big{font-size:40px;font-weight:800;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.ledger .big .u{font-size:18px;font-weight:700;color:#fff;margin-left:3px}
+.ledger-row.sub{padding:5px 0}
+.ledger-row.sub .k{color:#8B867E}
+.ledger-row.sub .v{font-size:15px;color:#EDEAE4;font-variant-numeric:tabular-nums}
+
+/* -- Bouton envoyer ----------------------------------------------------------- */
+.btn-send{
+  width:100%;margin-top:16px;border:none;border-radius:14px;
+  background:var(--accent);color:#fff;font:inherit;font-size:15px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;padding:17px;cursor:pointer;transition:.15s var(--ease);
+}
+.btn-send:hover{background:#d65e14}
+.btn-send:active{transform:translateY(1px)}
+.btn-send:disabled{background:#CFC9C0;color:#fff;cursor:not-allowed}
+
+/* -- Confirmation ------------------------------------------------------------- */
+.done{text-align:center;padding:14px 4px 6px}
+.done .tick{width:52px;height:52px;margin:0 auto 12px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center}
+.done .tick svg{width:26px;height:26px}
+.done h3{margin:2px 0 6px;font-size:20px;font-weight:700}
+.done p{color:var(--muted);margin:3px 0;font-size:14px}
+.done .strong{color:var(--ink);font-weight:700}
+.link{display:inline-block;margin-top:16px;color:var(--accent-ink);font-weight:600;text-decoration:none;font-size:14px;border-bottom:1px solid var(--accent-soft);padding-bottom:1px}
+.link:hover{border-color:var(--accent)}
+
+/* -- Onboarding --------------------------------------------------------------- */
+.toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.toggle button{
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);
+  font:inherit;font-weight:600;font-size:15px;border-radius:12px;padding:14px;cursor:pointer;transition:.15s var(--ease);
+}
+.toggle button[aria-pressed="true"]{background:#fff;color:var(--ink);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+
+/* -- Divers ------------------------------------------------------------------- */
+.foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:20px}
+.foot a{color:var(--accent-ink);text-decoration:none;font-weight:600}
+.hide{display:none!important}
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:14px 22px;border-radius:12px;
+  font-weight:600;font-size:14px;box-shadow:0 12px 30px rgba(0,0,0,.22);z-index:50;max-width:90%;text-align:center;
+}
+.toast.err{background:var(--danger)}
+
+/* -- Accueil (annuaire) ------------------------------------------------------- */
+.hero{text-align:center;padding:34px 0 10px}
+.hero svg{height:78px}
+.hero p{color:var(--muted);margin:14px 0 0;font-size:14px}
+.emplist{display:grid;gap:10px;margin-top:20px}
+.emp{
+  display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:15px 18px;text-decoration:none;color:var(--ink);transition:.15s var(--ease);
+}
+.emp:hover{border-color:var(--ink)}
+.emp .nom{font-weight:700;font-size:16px}
+.emp .role{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
+.emp .arrow{margin-left:auto;color:var(--accent);font-size:20px}
