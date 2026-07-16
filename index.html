@@ -153,11 +153,11 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
     await OneSignal.init({
       appId: "64401ef8-b79e-453f-a80f-c4e1216f73cf",
       serviceWorkerParam: { scope: "/HK-feuille-d-heure-/" },
-      serviceWorkerPath: "HK-feuille-d-heure-/OneSignalSDKWorker.js"
+      serviceWorkerPath: "/HK-feuille-d-heure-/OneSignalSDKWorker.js"
     });
   });
   // Helpers appelés par l'app
-  var HK_VERSION = "v6";
+  var HK_VERSION = "v7";
   window.HK_NOTIF = {
     login: function(id){
       window.OneSignalDeferred.push(async function(OneSignal){
