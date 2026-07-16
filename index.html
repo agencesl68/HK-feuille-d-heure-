@@ -145,63 +145,74 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:14px 22px;border-radius:12px;font-weight:600;font-size:14px;box-shadow:0 12px 30px rgba(0,0,0,.22);z-index:50;max-width:90%;text-align:center}
 .toast.err{background:var(--danger)}
 </style>
-<!-- Notifications push (OneSignal) — rappel 18h30 si feuille non remplie -->
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<!-- Notifications push — Web Push VAPID standard (aucun SDK tiers) -->
 <script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal){
-    await OneSignal.init({
-      appId: "64401ef8-b79e-453f-a80f-c4e1216f73cf",
-      serviceWorkerParam: { scope: "/HK-feuille-d-heure-/" },
-      serviceWorkerPath: "/HK-feuille-d-heure-/OneSignalSDKWorker.js"
-    });
-  });
-  // Helpers appelés par l'app
-  var HK_VERSION = "v7";
+  var HK_VERSION = "v8";
+  var HK_VAPID_PUBLIC = "BEx3Fw-lSV6EB3_8PvyiKgQxwyP5xia-vP4kbB33QDHQAO0xZmEt9oTVaMERHOExwblth_T7j2MS7aMQMuYmzBM";
+  var HK_SUB_WEBHOOK = "https://hook.eu1.make.com/s9escvs6afqaajdp5q5jc4rd8rkkh43f";
+  var HK_SCOPE = "/HK-feuille-d-heure-/";
+
+  function hkB64ToUint8(b64){
+    var pad = "=".repeat((4 - b64.length % 4) % 4);
+    var s = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+    var raw = atob(s), arr = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+
   window.HK_NOTIF = {
-    login: function(id){
-      window.OneSignalDeferred.push(async function(OneSignal){
-        try{ await OneSignal.login(String(id)); }catch(e){}
-        HK_NOTIF.refreshCta();
-      });
+    employe: null,
+    login: function(emp){ HK_NOTIF.employe = emp; HK_NOTIF.refreshCta(); },
+    markDone: function(){ /* le journal des envois est géré côté Make */ },
+
+    // L'activation DOIT partir d'un vrai tap (exigence iOS)
+    activer: async function(btn){
+      try{
+        if (btn){ btn.disabled = true; btn.textContent = "Activation…"; }
+        var perm = await Notification.requestPermission();
+        if (perm !== "granted"){ HK_NOTIF.refreshCta(); return; }
+        var reg = await navigator.serviceWorker.register(HK_SCOPE + "sw.js", { scope: HK_SCOPE });
+        await navigator.serviceWorker.ready;
+        var sub = await reg.pushManager.getSubscription();
+        if (!sub){
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: hkB64ToUint8(HK_VAPID_PUBLIC)
+          });
+        }
+        if (sub && HK_SUB_WEBHOOK){
+          await fetch(HK_SUB_WEBHOOK, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              employeId:  HK_NOTIF.employe ? HK_NOTIF.employe.id  : "",
+              employeNom: HK_NOTIF.employe ? HK_NOTIF.employe.nom : "",
+              subscription: sub
+            })
+          });
+        }
+      } catch(e){ if (btn) btn.textContent = "Erreur : " + (e && e.message ? e.message : e); }
+      HK_NOTIF.refreshCta();
     },
-    markDone: function(dateISO){
-      window.OneSignalDeferred.push(async function(OneSignal){
-        try{ await OneSignal.User.addTag("derniere_feuille", dateISO); }catch(e){}
-      });
-    },
-    // Bouton d'activation : visible tant qu'il n'y a pas d'ABONNEMENT push actif.
-    // Affiche un diagnostic (iOS : app installée + tap obligatoires).
-    refreshCta: function(){
-      window.OneSignalDeferred.push(async function(OneSignal){
-        var el = document.getElementById("notif-cta");
-        if(!el) return;
-        var supporte="?", installe="?", perm="?", sw="?";
-        try{ supporte = OneSignal.Notifications.isPushSupported() ? "ok" : "NON"; }catch(e){}
-        try{ installe = ((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true) ? "oui" : "NON"; }catch(e){}
-        try{ perm = (typeof Notification!=="undefined") ? Notification.permission : "n/a"; }catch(e){}
-        try{ var rs = await navigator.serviceWorker.getRegistrations(); sw = String(rs.length); }catch(e){}
-        var subId=null, optedIn=false, token=null;
-        try{
-          var ps = OneSignal.User.PushSubscription;
-          subId   = (ps && ps.id) ? ps.id : null;
-          optedIn = !!(ps && ps.optedIn === true);
-          token   = (ps && ps.token) ? ps.token : null;
-        }catch(e){}
-        // Abonné pour de vrai = il faut un JETON, pas seulement un id/optedIn
-        var abonne = !!(subId && optedIn && token);
-        el.innerHTML =
-          (abonne ? '' : '<button type="button" id="notif-btn" class="notif-cta-btn">🔔 Activer les rappels de 18h30</button>') +
-          '<div class="notif-diag">push:'+supporte+' · installé:'+installe+' · perm:'+perm+
-          ' · sw:'+sw+' · id:'+(subId?"oui":"non")+' · <b>token:'+(token?"OUI":"non")+'</b> · '+HK_VERSION+'</div>';
-        var b=document.getElementById("notif-btn");
-        if(b) b.addEventListener("click", async function(){
-          b.disabled=true; b.textContent="Activation…";
-          try{ await OneSignal.Notifications.requestPermission(); }catch(e){}
-          try{ await OneSignal.User.PushSubscription.optIn(); }catch(e){}
-          setTimeout(function(){ HK_NOTIF.refreshCta(); }, 2000);
-        });
-      });
+
+    refreshCta: async function(){
+      var el = document.getElementById("notif-cta"); if (!el) return;
+      var supporte = ("PushManager" in window) ? "ok" : "NON";
+      var installe = "?", perm = "?", sw = "0";
+      try{ installe = ((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true) ? "oui" : "NON"; }catch(e){}
+      try{ perm = (typeof Notification !== "undefined") ? Notification.permission : "n/a"; }catch(e){}
+      try{ var rs = await navigator.serviceWorker.getRegistrations(); sw = String(rs.length); }catch(e){}
+      var sub = null;
+      try{
+        var reg = await navigator.serviceWorker.getRegistration(HK_SCOPE);
+        if (reg) sub = await reg.pushManager.getSubscription();
+      }catch(e){}
+      var abonne = !!(sub && perm === "granted");
+      el.innerHTML =
+        (abonne ? "" : '<button type="button" id="notif-btn" class="notif-cta-btn">🔔 Activer les rappels de 18h30</button>') +
+        '<div class="notif-diag">push:' + supporte + ' · installé:' + installe + ' · perm:' + perm +
+        ' · sw:' + sw + ' · <b>token:' + (sub ? "OUI" : "non") + '</b> · ' + HK_VERSION + '</div>';
+      var b = document.getElementById("notif-btn");
+      if (b) b.addEventListener("click", function(){ HK_NOTIF.activer(b); });
     }
   };
 </script>
@@ -584,7 +595,7 @@ window.HK_EMPLOYES = [
   function demarrer(){
     if(who) who.innerHTML=`<div class="nom">${employe.nom}</div><div class="role">${employe.role==="chauffeur"?"Chauffeur":"Chantier"}</div>`;
     initState(); render();
-    if(window.HK_NOTIF) HK_NOTIF.login(employe.id);
+    if(window.HK_NOTIF) HK_NOTIF.login(employe);
   }
   if(employe) demarrer(); else renderOnboarding();
 })();
