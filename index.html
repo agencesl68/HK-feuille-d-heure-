@@ -157,7 +157,7 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
     });
   });
   // Helpers appelés par l'app
-  var HK_VERSION = "v5";
+  var HK_VERSION = "v6";
   window.HK_NOTIF = {
     login: function(id){
       window.OneSignalDeferred.push(async function(OneSignal){
@@ -181,17 +181,19 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
         try{ installe = ((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true) ? "oui" : "NON"; }catch(e){}
         try{ perm = (typeof Notification!=="undefined") ? Notification.permission : "n/a"; }catch(e){}
         try{ var rs = await navigator.serviceWorker.getRegistrations(); sw = String(rs.length); }catch(e){}
-        var subId=null, abonne=false;
+        var subId=null, optedIn=false, token=null;
         try{
           var ps = OneSignal.User.PushSubscription;
-          subId = (ps && ps.id) ? ps.id : null;
-          abonne = !!(subId && ps.optedIn === true);
+          subId   = (ps && ps.id) ? ps.id : null;
+          optedIn = !!(ps && ps.optedIn === true);
+          token   = (ps && ps.token) ? ps.token : null;
         }catch(e){}
-        if(abonne){ el.innerHTML=""; return; }
+        // Abonné pour de vrai = il faut un JETON, pas seulement un id/optedIn
+        var abonne = !!(subId && optedIn && token);
         el.innerHTML =
-          '<button type="button" id="notif-btn" class="notif-cta-btn">🔔 Activer les rappels de 18h30</button>' +
+          (abonne ? '' : '<button type="button" id="notif-btn" class="notif-cta-btn">🔔 Activer les rappels de 18h30</button>') +
           '<div class="notif-diag">push:'+supporte+' · installé:'+installe+' · perm:'+perm+
-          ' · sw:'+sw+' · abonné:'+(subId?"oui":"non")+' · '+HK_VERSION+'</div>';
+          ' · sw:'+sw+' · id:'+(subId?"oui":"non")+' · <b>token:'+(token?"OUI":"non")+'</b> · '+HK_VERSION+'</div>';
         var b=document.getElementById("notif-btn");
         if(b) b.addEventListener("click", async function(){
           b.disabled=true; b.textContent="Activation…";
