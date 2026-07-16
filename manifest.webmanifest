@@ -1,0 +1,15 @@
+{
+  "name": "HK Terrassement — Feuille d'heures",
+  "short_name": "HK Heures",
+  "start_url": "./",
+  "scope": "/HK-feuille-d-heure-/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#F4F2ED",
+  "icons": [
+    { "src": "icon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

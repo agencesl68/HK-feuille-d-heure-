@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="HK Heures">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 460'%3E%3Crect width='460' height='460' fill='%23141518'/%3E%3Cg fill='%23FE6001' transform='translate(30,140)'%3E%3Crect x='74' y='16' width='40' height='150' rx='2'/%3E%3Crect x='154' y='16' width='40' height='150' rx='2'/%3E%3Crect x='114' y='74' width='40' height='34'/%3E%3Crect x='244' y='16' width='40' height='150' rx='2'/%3E%3Cpolygon points='284,88 344,16 386,16 308,100 386,166 344,166 284,104'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>
 /* =============================================================================
    HK TERRASSEMENT — feuille d'heures (fichier unique autonome)
@@ -140,6 +141,7 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
 .notif-cta-btn{width:100%;margin-top:14px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);font:inherit;font-weight:700;font-size:14px;border-radius:12px;padding:13px;cursor:pointer}
 .notif-cta-btn:active{transform:translateY(1px)}
 .notif-cta-btn:disabled{opacity:.6}
+.notif-diag{font-size:10.5px;color:var(--muted);text-align:center;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:14px 22px;border-radius:12px;font-weight:600;font-size:14px;box-shadow:0 12px 30px rgba(0,0,0,.22);z-index:50;max-width:90%;text-align:center}
 .toast.err{background:var(--danger)}
 </style>
@@ -155,6 +157,7 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
     });
   });
   // Helpers appelés par l'app
+  var HK_VERSION = "v5";
   window.HK_NOTIF = {
     login: function(id){
       window.OneSignalDeferred.push(async function(OneSignal){
@@ -167,25 +170,34 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
         try{ await OneSignal.User.addTag("derniere_feuille", dateISO); }catch(e){}
       });
     },
-    // Bouton d'activation : visible tant qu'il n'y a pas d'ABONNEMENT push actif
-    // (iOS exige un vrai tap ; permission accordée ≠ abonné)
+    // Bouton d'activation : visible tant qu'il n'y a pas d'ABONNEMENT push actif.
+    // Affiche un diagnostic (iOS : app installée + tap obligatoires).
     refreshCta: function(){
       window.OneSignalDeferred.push(async function(OneSignal){
         var el = document.getElementById("notif-cta");
         if(!el) return;
-        var abonne=false;
+        var supporte="?", installe="?", perm="?", sw="?";
+        try{ supporte = OneSignal.Notifications.isPushSupported() ? "ok" : "NON"; }catch(e){}
+        try{ installe = ((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true) ? "oui" : "NON"; }catch(e){}
+        try{ perm = (typeof Notification!=="undefined") ? Notification.permission : "n/a"; }catch(e){}
+        try{ var rs = await navigator.serviceWorker.getRegistrations(); sw = String(rs.length); }catch(e){}
+        var subId=null, abonne=false;
         try{
           var ps = OneSignal.User.PushSubscription;
-          abonne = !!(ps && ps.id && ps.optedIn === true);
+          subId = (ps && ps.id) ? ps.id : null;
+          abonne = !!(subId && ps.optedIn === true);
         }catch(e){}
         if(abonne){ el.innerHTML=""; return; }
-        el.innerHTML = '<button type="button" id="notif-btn" class="notif-cta-btn">🔔 Activer les rappels de 18h30</button>';
+        el.innerHTML =
+          '<button type="button" id="notif-btn" class="notif-cta-btn">🔔 Activer les rappels de 18h30</button>' +
+          '<div class="notif-diag">push:'+supporte+' · installé:'+installe+' · perm:'+perm+
+          ' · sw:'+sw+' · abonné:'+(subId?"oui":"non")+' · '+HK_VERSION+'</div>';
         var b=document.getElementById("notif-btn");
         if(b) b.addEventListener("click", async function(){
           b.disabled=true; b.textContent="Activation…";
           try{ await OneSignal.Notifications.requestPermission(); }catch(e){}
           try{ await OneSignal.User.PushSubscription.optIn(); }catch(e){}
-          setTimeout(function(){ HK_NOTIF.refreshCta(); }, 1500);
+          setTimeout(function(){ HK_NOTIF.refreshCta(); }, 2000);
         });
       });
     }
