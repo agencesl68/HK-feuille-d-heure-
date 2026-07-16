@@ -55,10 +55,10 @@ jobs:
             }
 
             const message = JSON.stringify({
-  title: "Rappel",
-  body:  "N'oublie pas de remplir ta feuille d'heures",
-  url:   "https://agencesl68.github.io/HK-feuille-d-heure-/"
-});
+              title: "Rappel",
+              body:  "N'oublie pas de remplir ta feuille d'heures",
+              url:   "https://agencesl68.github.io/HK-feuille-d-heure-/"
+            });
 
             let ok = 0, ko = 0;
             for (const c of cibles) {
