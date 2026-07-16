@@ -1,6 +1,6 @@
 {
-  "name": "HK Terrassement — Feuille d'heures",
-  "short_name": "HK Heures",
+  "name": "HK Terrassement",
+  "short_name": "HK Terrassement",
   "start_url": "./",
   "scope": "/HK-feuille-d-heure-/",
   "display": "standalone",
