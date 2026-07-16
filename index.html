@@ -151,7 +151,7 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
     await OneSignal.init({
       appId: "64401ef8-b79e-453f-a80f-c4e1216f73cf",
       serviceWorkerParam: { scope: "/HK-feuille-d-heure-/" },
-      serviceWorkerPath: "/HK-feuille-d-heure-/OneSignalSDKWorker.js"
+      serviceWorkerPath: "HK-feuille-d-heure-/OneSignalSDKWorker.js"
     });
   });
   // Helpers appelés par l'app
@@ -167,20 +167,25 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
         try{ await OneSignal.User.addTag("derniere_feuille", dateISO); }catch(e){}
       });
     },
-    // Bouton d'activation (iOS exige un vrai tap pour autoriser les notifs)
+    // Bouton d'activation : visible tant qu'il n'y a pas d'ABONNEMENT push actif
+    // (iOS exige un vrai tap ; permission accordée ≠ abonné)
     refreshCta: function(){
       window.OneSignalDeferred.push(async function(OneSignal){
         var el = document.getElementById("notif-cta");
         if(!el) return;
-        var granted=false;
-        try{ granted = OneSignal.Notifications.permission === true; }catch(e){}
-        if(granted){ el.innerHTML=""; return; }
+        var abonne=false;
+        try{
+          var ps = OneSignal.User.PushSubscription;
+          abonne = !!(ps && ps.id && ps.optedIn === true);
+        }catch(e){}
+        if(abonne){ el.innerHTML=""; return; }
         el.innerHTML = '<button type="button" id="notif-btn" class="notif-cta-btn">🔔 Activer les rappels de 18h30</button>';
         var b=document.getElementById("notif-btn");
         if(b) b.addEventListener("click", async function(){
           b.disabled=true; b.textContent="Activation…";
           try{ await OneSignal.Notifications.requestPermission(); }catch(e){}
-          HK_NOTIF.refreshCta();
+          try{ await OneSignal.User.PushSubscription.optIn(); }catch(e){}
+          setTimeout(function(){ HK_NOTIF.refreshCta(); }, 1500);
         });
       });
     }
