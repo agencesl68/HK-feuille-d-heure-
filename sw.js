@@ -8,7 +8,9 @@ self.addEventListener("push", function(event){
   try { data = event.data ? event.data.json() : {}; }
   catch(e){ data = { body: event.data ? event.data.text() : "" }; }
 
-  var titre = data.title || "HK Terrassement";
+  // Titre vide volontairement : iOS affiche déjà le nom de l'app.
+  // Un titre ferait doublon ("HK Terrassement" + "from HK Terrassement").
+  var titre = (typeof data.title === "string") ? data.title : "";
   var options = {
     body: data.body || "N'oublie pas de remplir ta feuille d'heures",
     icon: "/HK-feuille-d-heure-/icon.png",
