@@ -155,7 +155,7 @@ textarea.in{font-size:15px;min-height:72px;resize:none}
 </style>
 <!-- Notifications push — Web Push VAPID standard (aucun SDK tiers) -->
 <script>
-  var HK_VERSION = "v12";
+  var HK_VERSION = "v13";
   var HK_DEBUG = /[?&]debug=1/.test(location.search);   // diagnostic masqué en production
   var HK_VAPID_PUBLIC = "BEx3Fw-lSV6EB3_8PvyiKgQxwyP5xia-vP4kbB33QDHQAO0xZmEt9oTVaMERHOExwblth_T7j2MS7aMQMuYmzBM";
   var HK_SUB_WEBHOOK = "https://hook.eu1.make.com/s9escvs6afqaajdp5q5jc4rd8rkkh43f";
@@ -209,12 +209,13 @@ textarea.in{font-size:15px;min-height:72px;resize:none}
             applicationServerKey: hkB64ToUint8(HK_VAPID_PUBLIC)
           });
         }
-        if (sub && HK_SUB_WEBHOOK){
+        // On n'enregistre l'abonnement QUE si le salarié est identifié
+        if (sub && HK_SUB_WEBHOOK && HK_NOTIF.employe && HK_NOTIF.employe.id){
           await fetch(HK_SUB_WEBHOOK, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              employeId:  HK_NOTIF.employe ? HK_NOTIF.employe.id  : "",
-              employeNom: HK_NOTIF.employe ? HK_NOTIF.employe.nom : "",
+              employeId:  HK_NOTIF.employe.id,
+              employeNom: HK_NOTIF.employe.nom,
               subscription: sub
             })
           });
