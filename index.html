@@ -28,13 +28,16 @@ body{
   font-family:"Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   background:var(--bg);color:var(--ink);
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;line-height:1.5;
+  overflow-x:hidden;                     /* aucun défilement latéral, jamais */
+  -webkit-tap-highlight-color:transparent;
+  -webkit-text-size-adjust:100%;
 }
-.wrap{max-width:540px;margin:0 auto;padding:18px 18px 72px}
+.wrap{max-width:540px;margin:0 auto;padding:18px 18px calc(72px + env(safe-area-inset-bottom))}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
 .hint{font-size:12.5px;color:var(--muted);margin-top:12px}
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 /* Header */
-.topbar{background:var(--surface);color:var(--ink);padding:12px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line)}
+.topbar{background:var(--surface);color:var(--ink);padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line)}
 .topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent)}
 .topbar .brand{height:46px;display:block}
 .topbar svg.brand{height:46px}
@@ -52,7 +55,7 @@ body{
 @media (prefers-reduced-motion:reduce){#splash{animation-delay:.8s}#splash .s-logo,#splash .s-bar::after{animation:none}}
 /* Onglets */
 .tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-top:20px}
-.tab{flex:1;text-align:center;border:none;background:transparent;font:inherit;font-weight:600;font-size:14px;color:var(--muted);padding:10px 12px;border-radius:999px;cursor:pointer;transition:.15s var(--ease)}
+.tab{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border:none;background:transparent;font:inherit;font-weight:600;font-size:14px;color:var(--muted);padding:10px 12px;border-radius:999px;cursor:pointer;transition:.15s var(--ease)}
 .tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
 /* Récap semaine */
 .wk-head{display:flex;align-items:baseline;justify-content:space-between;margin-top:22px}
@@ -73,14 +76,18 @@ body{
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:20px;margin-top:14px}
 .panel + .panel{margin-top:12px}
 /* Barre de date */
-.daybar{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-top:22px}
+.daybar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:22px}
+.daybar>div{min-width:0}
+.daybar .day{overflow-wrap:anywhere}
 .daybar .day{font-size:30px;font-weight:700;letter-spacing:-.01em;text-transform:capitalize;line-height:1.05}
 .daybar .day-sub{font-size:13px;color:var(--muted);margin-top:4px}
-.date-input{font:inherit;font-size:14px;color:var(--ink);border:1px solid var(--line-2);border-radius:12px;padding:11px 12px;background:var(--surface);font-variant-numeric:tabular-nums}
+.date-input{flex:0 0 auto;min-width:0;max-width:52%;box-sizing:border-box;-webkit-appearance:none;appearance:none;font:inherit;font-size:14px;color:var(--ink);border:1px solid var(--line-2);border-radius:12px;padding:11px 12px;background:var(--surface);font-variant-numeric:tabular-nums}
 /* Pastilles type de journée */
-.seg{display:flex;flex-wrap:wrap;gap:8px}
-.pill{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:11px 16px;font-size:14.5px;font-weight:600;cursor:pointer;transition:all .15s var(--ease)}
-.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:.15s var(--ease)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg>*{min-width:0}
+.pill{display:flex;align-items:center;justify-content:flex-start;gap:9px;min-height:46px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:11px 16px;font-size:14.5px;font-weight:600;cursor:pointer;transition:all .15s var(--ease)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:0 0 auto;transition:.15s var(--ease)}
+.pill span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pill.work .dot{background:var(--accent)}
 .pill.off .dot{background:var(--danger)}
 .pill:hover{border-color:var(--line-2);background:#fff}
@@ -90,14 +97,15 @@ body{
 /* Champs */
 .field{display:block}
 .field .lab{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:7px;letter-spacing:.01em}
-.in,input[type=time].in,input[type=text].in,textarea.in{width:100%;font:inherit;font-size:16px;color:var(--ink);padding:13px 14px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface-2);transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
+.in,input[type=time].in,input[type=text].in,textarea.in{width:100%;min-width:0;max-width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;font:inherit;font-size:16px;color:var(--ink);padding:13px 14px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface-2);transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
 input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .in:focus,textarea.in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);background:#fff}
-textarea.in{font-size:15px;min-height:60px;resize:vertical}
+textarea.in{font-size:15px;min-height:72px;resize:none}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.two>*{min-width:0}                 /* clé : autorise la colonne à rétrécir (sinon les champs heure iOS débordent) */
 .mt{margin-top:18px}
 .quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-.quick button{border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font:inherit;font-weight:600;font-size:13px;border-radius:999px;padding:9px 15px;cursor:pointer;transition:.15s var(--ease)}
+.quick button{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font:inherit;font-weight:600;font-size:13px;border-radius:999px;padding:0 16px;cursor:pointer;transition:.15s var(--ease)}
 .quick button:hover{border-color:var(--ink);color:var(--ink);background:#fff}
 .quick button.primary{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
 /* Bandeau absence */
@@ -134,7 +142,7 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
 .toggle button[aria-pressed="true"]{background:#fff;color:var(--ink);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 /* Divers */
 .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:20px}
-.foot a{color:var(--accent-ink);text-decoration:none;font-weight:600}
+.foot a{display:inline-block;min-height:44px;line-height:44px;padding:0 10px;color:var(--accent-ink);text-decoration:none;font-weight:600}
 .hide{display:none!important}
 .notif-cta{max-width:540px;margin:0 auto;padding:0 18px}
 .notif-cta:empty{display:none}
@@ -147,7 +155,8 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
 </style>
 <!-- Notifications push — Web Push VAPID standard (aucun SDK tiers) -->
 <script>
-  var HK_VERSION = "v9";
+  var HK_VERSION = "v12";
+  var HK_DEBUG = /[?&]debug=1/.test(location.search);   // diagnostic masqué en production
   var HK_VAPID_PUBLIC = "BEx3Fw-lSV6EB3_8PvyiKgQxwyP5xia-vP4kbB33QDHQAO0xZmEt9oTVaMERHOExwblth_T7j2MS7aMQMuYmzBM";
   var HK_SUB_WEBHOOK = "https://hook.eu1.make.com/s9escvs6afqaajdp5q5jc4rd8rkkh43f";
   var HK_SCOPE = "/HK-feuille-d-heure-/";
@@ -229,8 +238,8 @@ textarea.in{font-size:15px;min-height:60px;resize:vertical}
       var abonne = !!(sub && perm === "granted");
       el.innerHTML =
         (abonne ? "" : '<button type="button" id="notif-btn" class="notif-cta-btn">🔔 Activer les rappels de 18h30</button>') +
-        '<div class="notif-diag">push:' + supporte + ' · installé:' + installe + ' · perm:' + perm +
-        ' · sw:' + sw + ' · <b>token:' + (sub ? "OUI" : "non") + '</b> · ' + HK_VERSION + '</div>';
+        (HK_DEBUG ? '<div class="notif-diag">push:' + supporte + ' · installé:' + installe + ' · perm:' + perm +
+          ' · sw:' + sw + ' · <b>token:' + (sub ? "OUI" : "non") + '</b> · ' + HK_VERSION + '</div>' : "");
       var b = document.getElementById("notif-btn");
       if (b) b.addEventListener("click", function(){ HK_NOTIF.activer(b); });
     }
