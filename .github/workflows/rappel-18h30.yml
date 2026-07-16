@@ -1,0 +1,81 @@
+name: Rappel feuille d'heures 18h30
+
+# Envoie une notification aux salariés qui n'ont PAS rempli leur feuille du jour.
+# La logique "qui rappeler ?" est dans Make ; ici on ne fait que l'envoi chiffré (VAPID),
+# que Make ne sait pas faire.
+
+on:
+  schedule:
+    - cron: '30 16 * * 1-6'   # 18h30 à Paris en heure d'été  (UTC+2)
+    - cron: '30 17 * * 1-6'   # 18h30 à Paris en heure d'hiver (UTC+1)
+  workflow_dispatch:           # permet de lancer un test à la main
+
+jobs:
+  rappel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Est-il vraiment 18h à Paris ?
+        id: check
+        run: |
+          echo "Heure de Paris : $(TZ=Europe/Paris date '+%H:%M')"
+          HEURE=$(TZ=Europe/Paris date +%H)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$HEURE" = "18" ]; then
+            echo "envoyer=oui" >> "$GITHUB_OUTPUT"
+          else
+            echo "envoyer=non" >> "$GITHUB_OUTPUT"
+            echo "Pas 18h a Paris (changement d'heure) -> l'autre horaire s'en chargera."
+          fi
+
+      - name: Envoyer les rappels
+        if: steps.check.outputs.envoyer == 'oui'
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_PUBLIC_KEY: BEx3Fw-lSV6EB3_8PvyiKgQxwyP5xia-vP4kbB33QDHQAO0xZmEt9oTVaMERHOExwblth_T7j2MS7aMQMuYmzBM
+          WEBHOOK: https://hook.eu1.make.com/9pl7cisding52u37wcm2kua3hbk15gjs
+          SUBJECT: mailto:sachamuller79@gmail.com
+        run: |
+          npm install --silent web-push@3.6.7
+          cat > envoyer.js <<'SCRIPT'
+          const webpush = require('web-push');
+          webpush.setVapidDetails(
+            process.env.SUBJECT,
+            process.env.VAPID_PUBLIC_KEY,
+            process.env.VAPID_PRIVATE_KEY
+          );
+
+          (async () => {
+            // 1) On demande à Make : qui n'a pas rempli aujourd'hui ?
+            const reponse = await fetch(process.env.WEBHOOK);
+            const cibles = await reponse.json();
+            console.log(`À rappeler : ${cibles.length} personne(s)`);
+
+            if (!cibles.length) {
+              console.log("Personne n'a oublié -> aucun envoi. C'est le but !");
+              return;
+            }
+
+            const message = JSON.stringify({
+              title: "HK Terrassement",
+              body:  "⏰ N'oublie pas de remplir ta feuille d'heures",
+              url:   "https://agencesl68.github.io/HK-feuille-d-heure-/"
+            });
+
+            let ok = 0, ko = 0;
+            for (const c of cibles) {
+              if (!c.endpoint) { console.log("! abonnement incomplet, ignoré"); continue; }
+              const abonnement = { endpoint: c.endpoint, keys: { p256dh: c.p256dh, auth: c.auth } };
+              try {
+                const res = await webpush.sendNotification(abonnement, message, { TTL: 7200 });
+                console.log(`OK  ${c.nom} -> notifié (${res.statusCode})`);
+                ok++;
+              } catch (e) {
+                // 404/410 = abonnement expiré (téléphone réinitialisé, app désinstallée)
+                console.log(`KO  ${c.nom} -> échec ${e.statusCode || ""} ${e.body || e.message || ""}`);
+                ko++;
+              }
+            }
+            console.log(`Bilan : ${ok} envoyé(s), ${ko} échec(s)`);
+            if (ok === 0 && ko > 0) process.exit(1);
+          })();
+          SCRIPT
+          node envoyer.js
