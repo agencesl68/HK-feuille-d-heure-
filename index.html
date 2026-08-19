@@ -352,7 +352,7 @@ window.HK_CONFIG = {
   function sessionSauvee(){try{return JSON.parse(localStorage.getItem(CLE));}catch(e){return null;}}
   function sauverSession(s){localStorage.setItem(CLE,JSON.stringify(s));}
   function effacerSession(){localStorage.removeItem(CLE);}
-  let employe=null, horsLigne=false;
+  let employe=null, horsLigne=false, sessionExpiree=false;
 
   /* ---- Accès Supabase (API REST directe, aucune librairie externe) ---- */
   const SB={
@@ -485,7 +485,11 @@ window.HK_CONFIG = {
         employe=Object.assign({},s,{accessToken:a.access_token,refreshToken:a.refresh_token});
         const m=await SB.moi(); if(m){employe.id=m.id;employe.nom=m.nom;employe.role=m.role||"salarie";}
         sauverSession(employe);horsLigne=false;demarrer();
-      } else { effacerSession();renderLogin(s.id); }
+      } else {
+        // Jeton expire : on ouvre quand meme, en hors ligne, SANS rien effacer.
+        employe=s;horsLigne=true;sessionExpiree=true;demarrer();
+        toast("Session expiree — reconnectez-vous depuis l'onglet Historique.",true);
+      }
     }catch(e){
       // Pas de réseau (chantier) : on ouvre quand même avec la session mémorisée
       employe=s;horsLigne=true;demarrer();
@@ -647,7 +651,10 @@ window.HK_CONFIG = {
       effacerBrouillon();brouillonRepris=false;
       horsLigne=true;
       if(onErr)onErr();
-      toast("Hors ligne — enregistrée, envoi dès le retour du réseau.");
+      const refus=/40[13]/.test(String(e&&e.message));
+      toast(refus ? "Refusé par le serveur — reconnectez-vous (onglet Historique)."
+                  : "Hors ligne — enregistrée, envoi dès le retour du réseau.", refus);
+      if(refus) sessionExpiree=true;
       render();return true;
     }
   }
@@ -671,16 +678,18 @@ window.HK_CONFIG = {
     if(n){horsLigne=false;toast(n+" feuille"+(n>1?"s":"")+" synchronisée"+(n>1?"s":""));render();}
   }
   async function chargerServeur(){
-    if(!employe||!employe.token)return;
+    if(!employe||!employe.accessToken)return;          // <- etait "employe.token" : la fonction ne partait jamais
     try{
       const lignes=await SB.q("feuilles?select=*&order=date.desc&limit=1500");
       if(!Array.isArray(lignes))return;
-      const r={feuilles:lignes.map(depuisDB)};
       const pre="hk_sent_"+employe.id+"_";
-      const attente={};feuillesEnAttente().forEach(p=>{attente[pre+p.date]=true;});
-      for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);
-        if(k&&k.indexOf(pre)===0&&!attente[k])localStorage.removeItem(k);}
-      r.feuilles.forEach(f=>{const k=pre+f.date;if(!attente[k])localStorage.setItem(k,JSON.stringify(f));});
+      // On FUSIONNE, on n'efface jamais : une reponse vide ne doit pas detruire la saisie locale.
+      lignes.forEach(ligne=>{
+        const f=depuisDB(ligne), cle=pre+f.date;
+        let local=null; try{ local=JSON.parse(localStorage.getItem(cle)); }catch(e){}
+        if(local&&local._pending) return;               // saisie pas encore transmise : on la garde
+        localStorage.setItem(cle,JSON.stringify(f));
+      });
       horsLigne=false;render();
     }catch(e){ horsLigne=true;render(); }
   }
@@ -817,10 +826,13 @@ window.HK_CONFIG = {
           </div>
         </div>
         <button class="cta line" id="h-sync" style="margin-top:16px">Actualiser mes données</button>
+        ${sessionExpiree?`<button class="cta" id="h-relog" style="margin-top:10px">Se reconnecter</button>`:""}
       </div>`;
     const yp=document.getElementById("y-prev"),yn=document.getElementById("y-next");
     if(yp&&histYear>minY)yp.addEventListener("click",()=>{histYear--;renderHistorique();});
     if(yn&&histYear<maxY)yn.addEventListener("click",()=>{histYear++;renderHistorique();});
+    const hr=document.getElementById("h-relog");
+    if(hr)hr.addEventListener("click",()=>{ renderLogin(employe?employe.id:""); });  // ne touche PAS aux donnees locales
     const hs=document.getElementById("h-sync");
     if(hs)hs.addEventListener("click",async()=>{hs.disabled=true;hs.textContent="Actualisation…";await synchroniser();if(!horsLigne)toast("Données à jour");renderHistorique();});
   }
