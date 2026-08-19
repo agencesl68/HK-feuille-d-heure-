@@ -166,7 +166,9 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .done .strong{color:var(--ink);font-weight:800}
 
 /* Onboarding */
-.cta{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:54px;border:none;border-radius:14px;background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;font:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:var(--shadow-accent);transition:transform .14s var(--spring)}
+.cta{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;padding:0 18px;border:none;border-radius:14px;background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;font:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:var(--shadow-accent);transition:transform .14s var(--spring)}
+.cta svg{width:20px;height:20px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.cta:disabled{background:#CFC9C0;box-shadow:none;transform:none;cursor:not-allowed}
 .cta:active{transform:translateY(1px) scale(.99)}
 .cta.line{background:var(--surface-2);color:var(--accent-ink);box-shadow:none;border:1px solid var(--line-2)}
 
@@ -283,10 +285,11 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
    └───────────────────────────────────────────────────────────────────────────┘
    ============================================================================= */
 window.HK_CONFIG = {
-  // --- Serveur (Make.com) : ne pas modifier sauf si les scénarios changent ---
-  apiConnexion:    "https://hook.eu1.make.com/jgu41haqgwj544eryzl1hnajeidx3vbr",   // HK - Connexion      (6971526)
-  apiEnregistrer:  "https://hook.eu1.make.com/ejskegmpmex3uikpkq6hts1mkge8744x",   // HK - Enregistrer    (6971543)
-  apiDonnees:      "https://hook.eu1.make.com/oc2r9f9mtxpac7qdb7c5geqgdcnmb5nk",   // HK - Données        (6971554)
+  // --- Base de données Supabase : COLLER LES 2 VALEURS ICI ---
+  //     Supabase > Project Settings > API
+  supabaseUrl: "https://voxtcptopwnautnxsmia.supabase.co",     // « Project URL »
+  supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZveHRjcHRvcHduYXV0bnhzbWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5Njc3MTMsImV4cCI6MjEwMjU0MzcxM30.Vg0qIfEaitIJ3bdWCT6D0SF_OtUTrp5gKGw0HuWRDcY",                          // « anon » / « public » (jamais service_role)
+  domaine: "@hk.local",                              // suffixe technique des identifiants
 
   // --- Réglages métier ---
   timezone: "Europe/Paris",
@@ -351,13 +354,80 @@ window.HK_CONFIG = {
   function effacerSession(){localStorage.removeItem(CLE);}
   let employe=null, horsLigne=false;
 
-  async function apiPost(url,payload){
-    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    return await r.json();
+  /* ---- Accès Supabase (API REST directe, aucune librairie externe) ---- */
+  const SB={
+    base(){ return String(CFG.supabaseUrl||"").replace(/\/+$/,""); },
+    // Connexion par identifiant + mot de passe
+    async login(identifiant,motDePasse){
+      const r=await fetch(SB.base()+"/auth/v1/token?grant_type=password",{
+        method:"POST",headers:{"apikey":CFG.supabaseKey,"Content-Type":"application/json"},
+        body:JSON.stringify({email:(identifiant||"").trim().toLowerCase()+CFG.domaine,password:motDePasse})});
+      if(!r.ok) return null;
+      return await r.json();
+    },
+    // Reconnexion silencieuse (case « Rester connecté »)
+    async refresh(rt){
+      const r=await fetch(SB.base()+"/auth/v1/token?grant_type=refresh_token",{
+        method:"POST",headers:{"apikey":CFG.supabaseKey,"Content-Type":"application/json"},
+        body:JSON.stringify({refresh_token:rt})});
+      if(!r.ok) return null;
+      return await r.json();
+    },
+    // Requête sur les tables, avec renouvellement automatique du jeton
+    async q(chemin,opt,rejouer){
+      opt=opt||{};
+      const h={"apikey":CFG.supabaseKey,"Authorization":"Bearer "+(employe&&employe.accessToken),"Content-Type":"application/json"};
+      if(opt.prefer) h["Prefer"]=opt.prefer;
+      const r=await fetch(SB.base()+"/rest/v1/"+chemin,{method:opt.method||"GET",headers:h,
+        body:opt.body?JSON.stringify(opt.body):undefined});
+      if(r.status===401 && !rejouer && employe && employe.refreshToken){
+        const n=await SB.refresh(employe.refreshToken);
+        if(n&&n.access_token){
+          employe.accessToken=n.access_token; employe.refreshToken=n.refresh_token;
+          sauverSession(employe);
+          return SB.q(chemin,opt,true);
+        }
+      }
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      if(r.status===204) return null;
+      const t=await r.text();
+      return t?JSON.parse(t):null;
+    },
+    // Récupère la fiche du salarié connecté
+    async moi(){
+      const l=await SB.q("employes?select=id,nom,role&limit=1");
+      return (l&&l.length)?l[0]:null;
+    }
+  };
+
+  /* ---- Conversion entre le format de l'app et celui de la base ---- */
+  function versDB(p){
+    const h=v=>v?v:null;
+    return { employe_id:p.employeId, date:p.date, statut:p.statut, statut_label:p.statutLabel,
+      matinee_debut:h(p.matineeDebut), matinee_fin:h(p.matineeFin),
+      apres_midi_debut:h(p.apresMidiDebut), apres_midi_fin:h(p.apresMidiFin),
+      trajet_aller_depart:h(p.trajetAllerDepart), trajet_aller_arrivee:h(p.trajetAllerArrivee),
+      trajet_retour_depart:h(p.trajetRetourDepart), trajet_retour_arrivee:h(p.trajetRetourArrivee),
+      heures_journee:p.heuresJournee||0, heures_trajet:p.heuresTrajet||0, heures_total:p.heuresTotal||0,
+      heures_attendues:p.heuresAttendues||0, heures_supp:p.heuresSupp||0,
+      chantier:p.chantier||"", commentaire:p.commentaire||"", envoye_le:p.envoyeLe||new Date().toISOString() };
   }
-  function connexion(identifiant,motDePasse,token){
-    return apiPost(CFG.apiConnexion,{identifiant:(identifiant||"").trim().toLowerCase(),motDePasse:motDePasse||"-",token:token||"-"});
+  function hhmm(t){ return t?String(t).slice(0,5):""; }
+  function depuisDB(r){
+    return { employeId:r.employe_id, employeNom:employe?employe.nom:"", date:r.date,
+      statut:r.statut, statutLabel:r.statut_label,
+      matineeDebut:hhmm(r.matinee_debut), matineeFin:hhmm(r.matinee_fin),
+      apresMidiDebut:hhmm(r.apres_midi_debut), apresMidiFin:hhmm(r.apres_midi_fin),
+      trajetAllerDepart:hhmm(r.trajet_aller_depart), trajetAllerArrivee:hhmm(r.trajet_aller_arrivee),
+      trajetRetourDepart:hhmm(r.trajet_retour_depart), trajetRetourArrivee:hhmm(r.trajet_retour_arrivee),
+      heuresJournee:+r.heures_journee||0, heuresTrajet:+r.heures_trajet||0, heuresTotal:+r.heures_total||0,
+      heuresAttendues:+r.heures_attendues||0, heuresSupp:+r.heures_supp||0,
+      chantier:r.chantier||"", commentaire:r.commentaire||"", auto:!!r.auto,
+      envoyeLe:r.envoye_le, _envoyeHeure:r.envoye_le?new Date(r.envoye_le).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"" };
+  }
+  async function enregistrerFeuille(p){
+    await SB.q("feuilles?on_conflict=employe_id,date",
+      {method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:versDB(p)});
   }
 
   function renderLogin(prefill){
@@ -388,9 +458,11 @@ window.HK_CONFIG = {
       if(id.length<2||mdp.length<1)return toast("Identifiant et mot de passe obligatoires.",true);
       btn.disabled=true;btn.textContent="Connexion…";
       try{
-        const r=await connexion(id,mdp,null);
-        if(!r||!r.ok){btn.disabled=false;btn.textContent="Se connecter";return toast("Identifiant ou mot de passe incorrect.",true);}
-        employe={id:r.identifiant,nom:r.nom,role:r.role||"salarie",token:r.token};
+        const a=await SB.login(id,mdp);
+        if(!a||!a.access_token){btn.disabled=false;btn.textContent="Se connecter";return toast("Identifiant ou mot de passe incorrect.",true);}
+        employe={id:id.toLowerCase(),nom:id,role:"salarie",accessToken:a.access_token,refreshToken:a.refresh_token};
+        const m=await SB.moi();
+        if(m){employe.id=m.id;employe.nom=m.nom;employe.role=m.role||"salarie";}
         if(mem)sauverSession(employe); else effacerSession();
         horsLigne=false;demarrer();
       }catch(e){
@@ -402,20 +474,16 @@ window.HK_CONFIG = {
     document.getElementById("lg-mdp").addEventListener("keydown",e=>{if(e.key==="Enter")go();});
   }
 
-  function deconnexion(){
-    if(!confirm("Se déconnecter de cet appareil ?"))return;
-    const id=employe?employe.id:"";
-    effacerSession();employe=null;renderLogin(id);
-  }
 
   /* Auto-connexion au démarrage (case « Rester connecté ») */
   async function autoConnexion(){
     const s=sessionSauvee();
-    if(!s||!s.id){renderLogin();return;}
+    if(!s||!s.id||!s.refreshToken){renderLogin(s?s.id:"");return;}
     try{
-      const r=await connexion(s.id,null,s.token);
-      if(r&&r.ok){
-        employe={id:r.identifiant,nom:r.nom,role:r.role||"salarie",token:r.token};
+      const a=await SB.refresh(s.refreshToken);
+      if(a&&a.access_token){
+        employe=Object.assign({},s,{accessToken:a.access_token,refreshToken:a.refresh_token});
+        const m=await SB.moi(); if(m){employe.id=m.id;employe.nom=m.nom;employe.role=m.role||"salarie";}
         sauverSession(employe);horsLigne=false;demarrer();
       } else { effacerSession();renderLogin(s.id); }
     }catch(e){
@@ -427,7 +495,21 @@ window.HK_CONFIG = {
 
   /* État */
   let vue="jour", state, calYear, calMonth, calSel, calType="conge", histYear;
-  function initState(){ state={date:todayISO()}; resetJour(); }
+  /* ---------- Brouillon : la saisie en cours survit à la fermeture de l'app ---------- */
+  let brouillonRepris=false;
+  function cleBrouillon(){ return "hk_draft_"+employe.id; }
+  function sauverBrouillon(){ try{ localStorage.setItem(cleBrouillon(), JSON.stringify({state:state, maj:Date.now()})); }catch(e){} }
+  function effacerBrouillon(){ try{ localStorage.removeItem(cleBrouillon()); }catch(e){} }
+  function restaurerBrouillon(){
+    try{
+      const b=JSON.parse(localStorage.getItem(cleBrouillon()));
+      if(!b||!b.state||!b.state.date) return false;
+      if(Date.now()-(b.maj||0) > 7*86400000){ effacerBrouillon(); return false; }   // brouillon trop vieux
+      if(localStorage.getItem(sentKey(b.state.date))){ effacerBrouillon(); return false; } // déjà envoyée
+      state=b.state; brouillonRepris=true; return true;
+    }catch(e){ return false; }
+  }
+  function initState(){ state={date:todayISO()}; resetJour(); restaurerBrouillon(); }
   function resetJour(){ const std=CFG.journeeStandard;
     state.matineeDebut=std.matineeDebut;state.matineeFin=std.matineeFin;state.apremDebut=std.apremDebut;state.apremFin=std.apremFin;
     state.trajetAllerDep="";state.trajetAllerArr="";state.trajetRetourDep="";state.trajetRetourArr="";state.commentaire=""; }
@@ -462,6 +544,7 @@ window.HK_CONFIG = {
           <div class="day-sub">${jourFrLong(state.date)}</div></div>
         <input type="date" class="date-input" id="f-date" value="${state.date}" max="${todayISO()}">
       </div>
+      ${brouillonRepris?`<div class="offline" style="background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)"><span class="d" style="background:var(--accent)"></span>Saisie reprise là où vous l'aviez laissée</div>`:""}
       <div class="panel">
         <div class="eyebrow">Horaires</div>
         ${paire("Matin — début","f-md",state.matineeDebut,"Matin — fin","f-mf",state.matineeFin)}
@@ -491,15 +574,15 @@ window.HK_CONFIG = {
       <div class="field"><span class="lab">${lF}</span><input type="time" step="${STEP}" class="in" id="${iF}" value="${vF}"></div></div>`;
   }
   function bindJour(){
-    document.getElementById("f-date").addEventListener("change",e=>{state.date=e.target.value||todayISO();render();});
+    document.getElementById("f-date").addEventListener("change",e=>{state.date=e.target.value||todayISO();sauverBrouillon();render();});
     [["f-md","matineeDebut"],["f-mf","matineeFin"],["f-ad","apremDebut"],["f-af","apremFin"],
      ["f-tad","trajetAllerDep"],["f-taa","trajetAllerArr"],["f-trd","trajetRetourDep"],["f-tra","trajetRetourArr"],["f-com","commentaire"]]
       .forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.addEventListener("input",e=>{state[k]=e.target.value;majTot();});});
-    document.getElementById("q-std").addEventListener("click",()=>{const s=CFG.journeeStandard;Object.assign(state,{matineeDebut:s.matineeDebut,matineeFin:s.matineeFin,apremDebut:s.apremDebut,apremFin:s.apremFin});render();});
-    document.getElementById("q-clr").addEventListener("click",()=>{Object.assign(state,{matineeDebut:"",matineeFin:"",apremDebut:"",apremFin:"",trajetAllerDep:"",trajetAllerArr:"",trajetRetourDep:"",trajetRetourArr:""});render();});
+    document.getElementById("q-std").addEventListener("click",()=>{const s=CFG.journeeStandard;Object.assign(state,{matineeDebut:s.matineeDebut,matineeFin:s.matineeFin,apremDebut:s.apremDebut,apremFin:s.apremFin});sauverBrouillon();render();});
+    document.getElementById("q-clr").addEventListener("click",()=>{Object.assign(state,{matineeDebut:"",matineeFin:"",apremDebut:"",apremFin:"",trajetAllerDep:"",trajetAllerArr:"",trajetRetourDep:"",trajetRetourArr:""});sauverBrouillon();render();});
     document.getElementById("f-send").addEventListener("click",envoyerJour);
   }
-  function majTot(){const el=document.getElementById("r-tot");if(el)el.innerHTML=fmtH(heuresTotal())+'<span class="u">h</span>';}
+  function majTot(){const el=document.getElementById("r-tot");if(el)el.innerHTML=fmtH(heuresTotal())+'<span class="u">h</span>';sauverBrouillon();}
 
   function doneView(p){
     const tot=(p.heuresJournee||0)+(p.heuresTrajet||0);
@@ -552,14 +635,16 @@ window.HK_CONFIG = {
   async function envoyer(p, onErr){
     const cle="hk_sent_"+employe.id+"_"+p.date;
     try{
-      await apiPost(CFG.apiEnregistrer,p);
+      await enregistrerFeuille(p);
       localStorage.setItem(cle,JSON.stringify(p));
       if(window.HK_NOTIF)HK_NOTIF.markDone(p.date);
+      effacerBrouillon();brouillonRepris=false;
       horsLigne=false;toast("Feuille envoyée");render();return true;
     }catch(e){
       // Pas de réseau : on garde la feuille et on la renverra automatiquement
       const q=Object.assign({},p,{_pending:true});
       localStorage.setItem(cle,JSON.stringify(q));
+      effacerBrouillon();brouillonRepris=false;
       horsLigne=true;
       if(onErr)onErr();
       toast("Hors ligne — enregistrée, envoi dès le retour du réseau.");
@@ -580,7 +665,7 @@ window.HK_CONFIG = {
     const pre="hk_sent_"+employe.id+"_";let n=0;
     for(const p of list){
       const q=Object.assign({},p);delete q._pending;
-      try{ await apiPost(CFG.apiEnregistrer,q); localStorage.setItem(pre+q.date,JSON.stringify(q)); n++; }
+      try{ await enregistrerFeuille(q); localStorage.setItem(pre+q.date,JSON.stringify(q)); n++; }
       catch(e){ horsLigne=true; break; }
     }
     if(n){horsLigne=false;toast(n+" feuille"+(n>1?"s":"")+" synchronisée"+(n>1?"s":""));render();}
@@ -588,8 +673,9 @@ window.HK_CONFIG = {
   async function chargerServeur(){
     if(!employe||!employe.token)return;
     try{
-      const r=await apiPost(CFG.apiDonnees,{identifiant:employe.id,token:employe.token});
-      if(!r||!r.ok||!Array.isArray(r.feuilles))return;
+      const lignes=await SB.q("feuilles?select=*&order=date.desc&limit=1500");
+      if(!Array.isArray(lignes))return;
+      const r={feuilles:lignes.map(depuisDB)};
       const pre="hk_sent_"+employe.id+"_";
       const attente={};feuillesEnAttente().forEach(p=>{attente[pre+p.date]=true;});
       for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);
@@ -615,7 +701,7 @@ window.HK_CONFIG = {
       const iso=calYear+"-"+String(calMonth+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
       const wd=new Date(iso+"T12:00:00").getDay();   // 0=dimanche … 6=samedi
       const isToday=iso===t?" today":"";
-      const dim=wd===0, ferie=feries.has(iso);
+      const dim=(wd===0||wd===6), ferie=feries.has(iso);
       if(dim||ferie){                                 // dimanches & fériés non sélectionnables (congé = 6 j ouvrables)
         cells+=`<div class="cal-day ${ferie?"ferie":"dim"}${isToday}"${ferie?' title="Jour férié"':""}>${d}${ferie?'<span class="mk fer"></span>':""}</div>`;
         continue;
@@ -654,7 +740,7 @@ window.HK_CONFIG = {
           <span><i style="background:var(--good)"></i>Travaillé</span>
           <span><i style="background:#c9c2b6"></i>Férié</span>
         </div>
-        <div class="hint">Dimanches et jours fériés non sélectionnables. Un congé compte 6 jours par semaine (lundi au samedi).</div>
+        <div class="hint">Samedis, dimanches et jours fériés non sélectionnables. La semaine va du lundi au vendredi.</div>
       </div>
       <button class="btn-send" id="abs-ok" ${n?"":"disabled"}>Déclarer ${n?(n+" jour"+(n>1?"s":"")+" en "+ABS[calType].toLowerCase()):"— sélectionnez des jours"}</button>`;
     bindAbsences();
@@ -678,7 +764,7 @@ window.HK_CONFIG = {
   }
   async function envoyerSilencieux(p){
     const cle="hk_sent_"+employe.id+"_"+p.date;
-    try{ await apiPost(CFG.apiEnregistrer,p); localStorage.setItem(cle,JSON.stringify(p)); return true; }
+    try{ await enregistrerFeuille(p); localStorage.setItem(cle,JSON.stringify(p)); return true; }
     catch(e){ localStorage.setItem(cle,JSON.stringify(Object.assign({},p,{_pending:true}))); horsLigne=true; return false; }
   }
 
@@ -731,15 +817,12 @@ window.HK_CONFIG = {
           </div>
         </div>
         <button class="cta line" id="h-sync" style="margin-top:16px">Actualiser mes données</button>
-        <button class="cta line" id="h-out" style="margin-top:10px;color:var(--danger);border-color:#e7b3ab">Se déconnecter</button>
       </div>`;
     const yp=document.getElementById("y-prev"),yn=document.getElementById("y-next");
     if(yp&&histYear>minY)yp.addEventListener("click",()=>{histYear--;renderHistorique();});
     if(yn&&histYear<maxY)yn.addEventListener("click",()=>{histYear++;renderHistorique();});
     const hs=document.getElementById("h-sync");
     if(hs)hs.addEventListener("click",async()=>{hs.disabled=true;hs.textContent="Actualisation…";await synchroniser();if(!horsLigne)toast("Données à jour");renderHistorique();});
-    const ho=document.getElementById("h-out");
-    if(ho)ho.addEventListener("click",deconnexion);
   }
 
   /* Toast */
