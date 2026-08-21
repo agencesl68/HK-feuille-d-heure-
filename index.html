@@ -35,7 +35,8 @@ body{font-family:"Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Se
   -webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;touch-action:manipulation}
 .wrap{max-width:540px;margin:0 auto;padding:18px 18px calc(var(--nav-h) + 26px + env(safe-area-inset-bottom))}
 .num{font-variant-numeric:tabular-nums}
-@keyframes rise{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:none}}
+/* Ouverture : fondu simple, opacite seule — identique a l'app Direction. */
+@keyframes rise{from{opacity:0}to{opacity:1}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @keyframes pop{0%{opacity:0;transform:scale(.82)}55%{opacity:1;transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes navpop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
@@ -58,7 +59,7 @@ body{font-family:"Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Se
 .topbar .who .nom{font-weight:800;font-size:15px}
 .topbar .who .role{font-size:10px;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-top:2px}
 
-#app{animation:rise .34s var(--spring) both}
+#app{animation:rise .24s cubic-bezier(.4,0,.6,1) both}
 
 /* Navigation basse */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;
@@ -518,7 +519,7 @@ window.HK_CONFIG = {
   function initState(){ state={date:todayISO()}; resetJour(); restaurerBrouillon(); }
   function resetJour(){ const std=CFG.journeeStandard;
     state.matineeDebut=std.matineeDebut;state.matineeFin=std.matineeFin;state.apremDebut=std.apremDebut;state.apremFin=std.apremFin;
-    state.trajetAllerDep="";state.trajetAllerArr="";state.trajetRetourDep="";state.trajetRetourArr="";state.commentaire=""; }
+    state.trajetAllerDep="";state.trajetAllerArr="";state.trajetRetourDep="";state.trajetRetourArr="";state.chantier="";state.commentaire=""; }
   function heuresTravail(){ return dureeH(state.matineeDebut,state.matineeFin)+dureeH(state.apremDebut,state.apremFin); }
   function heuresTrajet(){ return dureeH(state.trajetAllerDep,state.trajetAllerArr)+dureeH(state.trajetRetourDep,state.trajetRetourArr); }
   function heuresTotal(){ return heuresTravail()+heuresTrajet(); }
@@ -563,8 +564,10 @@ window.HK_CONFIG = {
         <div class="mt">${paire("Retour — départ","f-trd",state.trajetRetourDep,"Retour — arrivée","f-tra",state.trajetRetourArr)}</div>
       </div>
       <div class="panel">
-        <div class="field"><span class="lab">Commentaire (facultatif)</span>
-          <input type="text" class="in" id="f-com" placeholder="Remarque" value="${state.commentaire||""}"></div>
+        <div class="field"><span class="lab">Chantier</span>
+          <input type="text" class="in" id="f-cha" placeholder="Nom du chantier" autocomplete="off" maxlength="60" value="${state.chantier||""}"></div>
+        <div class="mt"><div class="field"><span class="lab">Commentaire (facultatif)</span>
+          <input type="text" class="in" id="f-com" placeholder="Remarque" value="${state.commentaire||""}"></div></div>
       </div>
       <div class="ledger">
         <div class="k">Total de la journée</div>
@@ -582,7 +585,7 @@ window.HK_CONFIG = {
   function bindJour(){
     document.getElementById("f-date").addEventListener("change",e=>{state.date=e.target.value||todayISO();sauverBrouillon();render();});
     [["f-md","matineeDebut"],["f-mf","matineeFin"],["f-ad","apremDebut"],["f-af","apremFin"],
-     ["f-tad","trajetAllerDep"],["f-taa","trajetAllerArr"],["f-trd","trajetRetourDep"],["f-tra","trajetRetourArr"],["f-com","commentaire"]]
+     ["f-tad","trajetAllerDep"],["f-taa","trajetAllerArr"],["f-trd","trajetRetourDep"],["f-tra","trajetRetourArr"],["f-cha","chantier"],["f-com","commentaire"]]
       .forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.addEventListener("input",e=>{state[k]=e.target.value;majTot();});});
     document.getElementById("q-std").addEventListener("click",()=>{const s=CFG.journeeStandard;Object.assign(state,{matineeDebut:s.matineeDebut,matineeFin:s.matineeFin,apremDebut:s.apremDebut,apremFin:s.apremFin});sauverBrouillon();render();});
     document.getElementById("q-clr").addEventListener("click",()=>{Object.assign(state,{matineeDebut:"",matineeFin:"",apremDebut:"",apremFin:"",trajetAllerDep:"",trajetAllerArr:"",trajetRetourDep:"",trajetRetourArr:""});sauverBrouillon();render();});
@@ -630,7 +633,7 @@ window.HK_CONFIG = {
     return Object.assign({
       source:"app-hk", employeId:employe.id, employeNom:employe.nom, date:iso, jourSemaine:jourNom(iso),
       statut:statut, statutLabel:ABS[statut]||"Travaillé",
-      chantier:"", trajetAllerDepart:trav?state.trajetAllerDep:"", trajetAllerArrivee:trav?state.trajetAllerArr:"",
+      chantier:trav?String(state.chantier||"").replace(/["\\\r\n]/g," ").slice(0,60):"", trajetAllerDepart:trav?state.trajetAllerDep:"", trajetAllerArrivee:trav?state.trajetAllerArr:"",
       matineeDebut:trav?state.matineeDebut:"", matineeFin:trav?state.matineeFin:"", apresMidiDebut:trav?state.apremDebut:"", apresMidiFin:trav?state.apremFin:"",
       trajetRetourDepart:trav?state.trajetRetourDep:"", trajetRetourArrivee:trav?state.trajetRetourArr:"",
       heuresJournee:Math.round(hj*100)/100, heuresTrajet:Math.round(ht*100)/100, heuresTotal:Math.round((hj+ht)*100)/100,
