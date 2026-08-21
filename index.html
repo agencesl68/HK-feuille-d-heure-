@@ -43,12 +43,14 @@ body{font-family:"Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,"Se
 @keyframes tick{to{stroke-dashoffset:0}}
 
 /* Splash */
-#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#fff;animation:sOut .5s ease 1.5s forwards}
-#splash img{width:66%;max-width:260px;animation:sIn .7s cubic-bezier(.2,.85,.25,1) both}
-#splash .bar{width:130px;height:3px;border-radius:3px;background:rgba(254,96,1,.16);overflow:hidden}
-#splash .bar::after{content:"";display:block;height:100%;width:45%;border-radius:3px;background:var(--accent);animation:sBar 1.3s ease .3s both}
-@keyframes sIn{0%{opacity:0;transform:scale(.8) translateY(8px)}100%{opacity:1;transform:none}}
-@keyframes sBar{0%{transform:translateX(-115%)}100%{transform:translateX(330%)}}
+/* Ouverture : le logo apparait en fondu, sans mouvement, et l'ecran
+   s'efface vite. Aucune mise a l'echelle, aucune barre qui defile. */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#fff;animation:sOut .3s ease .6s forwards}
+#splash img{width:66%;max-width:260px;animation:fade .28s cubic-bezier(.4,0,.6,1) both}
+#splash .bar{display:none}
+
+}
+}
 @keyframes sOut{to{opacity:0;visibility:hidden;pointer-events:none}}
 
 /* En-tête clair + logo */
