@@ -322,6 +322,8 @@ window.HK_CONFIG = {
   function dureeH(a,b){if(!a||!b)return 0;const[ha,ma]=a.split(":").map(Number),[hb,mb]=b.split(":").map(Number);const d=((hb*60+mb)-(ha*60+ma))/60;return d>0?d:0;}
   function fmtH(h){const s=Math.round(h*100)/100;return Number.isInteger(s)?String(s):s.toFixed(2).replace(/0$/,"");}
   function fmtHU(h){return fmtH(h)+" h";}
+  /* Affichage des totaux au format XXhXX (9.15 -> "9h09"). */
+  function fmtHM(h){const n=h<0,t=Math.round(Math.abs(h)*60),H=Math.floor(t/60),M=t%60;return (n?"-":"")+H+"h"+String(M).padStart(2,"0");}
   function cap(s){return (s||"").charAt(0).toUpperCase()+(s||"").slice(1);}
   function slug(s){return s.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
   function sentKey(iso){return "hk_sent_"+employe.id+"_"+iso;}
@@ -566,7 +568,7 @@ window.HK_CONFIG = {
       </div>
       <div class="ledger">
         <div class="k">Total de la journée</div>
-        <div class="big num" id="r-tot">${fmtH(tot)}<span class="u">h</span></div>
+        <div class="big num" id="r-tot">${fmtHM(tot)}</div>
         <div class="note">trajet inclus</div>
       </div>
       <button class="btn-send" id="f-send">${IC.check}Envoyer</button>`;
@@ -586,7 +588,7 @@ window.HK_CONFIG = {
     document.getElementById("q-clr").addEventListener("click",()=>{Object.assign(state,{matineeDebut:"",matineeFin:"",apremDebut:"",apremFin:"",trajetAllerDep:"",trajetAllerArr:"",trajetRetourDep:"",trajetRetourArr:""});sauverBrouillon();render();});
     document.getElementById("f-send").addEventListener("click",envoyerJour);
   }
-  function majTot(){const el=document.getElementById("r-tot");if(el)el.innerHTML=fmtH(heuresTotal())+'<span class="u">h</span>';sauverBrouillon();}
+  function majTot(){const el=document.getElementById("r-tot");if(el)el.innerHTML=fmtHM(heuresTotal());sauverBrouillon();}
 
   function doneView(p){
     const tot=(p.heuresJournee||0)+(p.heuresTrajet||0);
@@ -632,7 +634,7 @@ window.HK_CONFIG = {
       matineeDebut:trav?state.matineeDebut:"", matineeFin:trav?state.matineeFin:"", apresMidiDebut:trav?state.apremDebut:"", apresMidiFin:trav?state.apremFin:"",
       trajetRetourDepart:trav?state.trajetRetourDep:"", trajetRetourArrivee:trav?state.trajetRetourArr:"",
       heuresJournee:Math.round(hj*100)/100, heuresTrajet:Math.round(ht*100)/100, heuresTotal:Math.round((hj+ht)*100)/100,
-      heuresAttendues:att, heuresSupp:trav?Math.round((hj-att)*100)/100:0,
+      heuresAttendues:att, heuresSupp:trav?Math.round((hj+ht-att)*100)/100:0,
       commentaire:trav?String(state.commentaire||"").replace(/["\\\r\n]/g," ").slice(0,200):"", envoyeLe:now.toISOString(), _envoyeHeure:envoyeHeure
     }, extra||{});
   }
@@ -796,7 +798,7 @@ window.HK_CONFIG = {
       let mt=0; list.forEach(e=>{if(e.statut==="travail")mt+=e.heuresTotal||((e.heuresJournee||0)+(e.heuresTrajet||0));});
       const rows=list.map(e=>{const d=new Date(e.iso+"T12:00:00");
         const val=e.statut==="travail"?`<span class="dv">${fmtHU(e.heuresTotal||((e.heuresJournee||0)+(e.heuresTrajet||0)))}</span>`:`<span class="dv off ${e.statut}">${e.statutLabel}</span>`;
-        const sub=e.statut==="travail"?(e.heuresSupp>0?"+"+fmtH(e.heuresSupp)+" h supp":"trajet inclus")+(e._pending?" · en attente d'envoi":""):"Journée déclarée";
+        const sub=e.statut==="travail"?(e.heuresSupp>0?"+"+fmtHM(e.heuresSupp)+" supp":"trajet inclus")+(e._pending?" · en attente d'envoi":""):"Journée déclarée";
         return `<div class="day-row"><div class="dd"><div class="n">${d.getDate()}</div><div class="w">${JOURS[d.getDay()].slice(0,3)}</div></div>
           <div class="di"><div class="dt">${jourNom(e.iso)}</div><div class="ds">${sub}</div></div>${val}</div>`;}).join("");
       body+=`<div class="mois-h"><span class="mn">${MOIS[m]}</span><span class="mt">${fmtHU(mt)}</span></div><div class="panel" style="padding:6px 20px">${rows}</div>`;
@@ -812,8 +814,8 @@ window.HK_CONFIG = {
         <button id="y-next" ${histYear>=maxY?"disabled":""}>${IC.next}</button>
       </div>
       <div class="panel" style="display:flex;justify-content:space-around;text-align:center">
-        <div><div style="font-size:24px;font-weight:800" class="num">${fmtH(totTrav)} h</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Total ${histYear}</div></div>
-        <div><div style="font-size:24px;font-weight:800;color:var(--accent)" class="num">${totSupp>0?"+":""}${fmtH(totSupp)} h</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Heures supp</div></div>
+        <div><div style="font-size:24px;font-weight:800" class="num">${fmtHM(totTrav)}</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Total ${histYear}</div></div>
+        <div><div style="font-size:24px;font-weight:800;color:var(--accent)" class="num">${totSupp>0?"+":""}${fmtHM(totSupp)}</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Heures supp</div></div>
       </div>
       ${body}
       <div class="sec">Mon compte</div>
