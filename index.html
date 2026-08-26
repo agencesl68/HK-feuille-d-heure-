@@ -752,20 +752,48 @@ window.HK_CONFIG = {
     if(n){horsLigne=false;toast(n+" feuille"+(n>1?"s":"")+" synchronisée"+(n>1?"s":""));render();}
   }
   async function chargerServeur(){
-    if(!employe||!employe.accessToken)return;          // <- etait "employe.token" : la fonction ne partait jamais
+    if(!employe||!employe.accessToken)return;
+    const LIMITE=1500;
     try{
-      const lignes=await SB.q("feuilles?select=*&order=date.desc&limit=1500");
-      if(!Array.isArray(lignes))return;
+      const lignes=await SB.q("feuilles?select=*&order=date.desc&limit="+LIMITE);
+      if(!Array.isArray(lignes))return;                 // reponse illisible : on ne touche a rien
       const pre="hk_sent_"+employe.id+"_";
-      // On FUSIONNE, on n'efface jamais : une reponse vide ne doit pas detruire la saisie locale.
+
+      // 1) On pose ce que le serveur renvoie, sans ecraser une saisie en attente.
+      const surServeur=new Set();
       lignes.forEach(ligne=>{
         const f=depuisDB(ligne), cle=pre+f.date;
+        surServeur.add(f.date);
         let local=null; try{ local=JSON.parse(localStorage.getItem(cle)); }catch(e){}
-        if(local&&local._pending) return;               // saisie pas encore transmise : on la garde
+        if(local&&local._pending) return;
         localStorage.setItem(cle,JSON.stringify(f));
       });
+
+      // 2) Le serveur fait foi pour les journees deja transmises : celles qui
+      //    ont disparu la-bas doivent disparaitre ici. On ne purge JAMAIS une
+      //    saisie en attente d'envoi, et jamais au-dela de ce que la requete
+      //    a pu voir (si elle a bute sur la limite, on s'arrete a la plus
+      //    ancienne date connue). Une reponse vide alors qu'on avait des
+      //    lignes locales purge donc bien tout : c'est voulu.
+      let borne=null;
+      if(lignes.length>=LIMITE){
+        borne=lignes.reduce((m,l)=>{const d=String(l.date); return (m===null||d<m)?d:m;},null);
+      }
+      const aSupprimer=[];
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(!k||k.indexOf(pre)!==0)continue;
+        const iso=k.slice(pre.length);
+        if(surServeur.has(iso))continue;
+        if(borne!==null&&iso<borne)continue;             // hors de portee de la requete
+        let local=null; try{ local=JSON.parse(localStorage.getItem(k)); }catch(e){}
+        if(local&&local._pending)continue;               // pas encore transmise : on garde
+        aSupprimer.push(k);
+      }
+      aSupprimer.forEach(k=>localStorage.removeItem(k));
+
       horsLigne=false;render();
-    }catch(e){ horsLigne=true;render(); }
+    }catch(e){ horsLigne=true;render(); }               // reseau coupe : on garde tout
   }
   async function synchroniser(){ await renvoyerEnAttente(); await chargerServeur(); }
 
