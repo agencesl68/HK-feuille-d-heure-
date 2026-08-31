@@ -2,8 +2,8 @@ name: Rappel feuille d'heures 19h30
 
 on:
   schedule:
-    - cron: '30 17 * * 1-6'
-    - cron: '30 18 * * 1-6'
+    - cron: '30 17 * * 1-5'
+    - cron: '30 18 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -33,25 +33,37 @@ jobs:
           cat > envoyer.js <<'SCRIPT'
           const webpush = require('web-push');
           webpush.setVapidDetails(process.env.SUBJECT, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+
+          /* Chaque societe a son app, son titre et son adresse. Un message
+             unique enverrait Tristan sur l'app de HK. */
+          const SOCIETES = {
+            HK: { titre: "HK Terrassement",
+                  url:   "https://agencesl68.github.io/HK-feuille-d-heure-/" },
+            AE: { titre: "Alsace Épandage",
+                  url:   "https://agencesl68.github.io/AE-feuille-d-heure/" }
+          };
+
           (async () => {
             const reponse = await fetch(process.env.WEBHOOK);
             const cibles = await reponse.json();
             console.log(`A rappeler : ${cibles.length} personne(s)`);
             if (!cibles.length) { console.log("Personne n'a oublie -> aucun envoi."); return; }
-            const message = JSON.stringify({
-              title: "Rappel",
-              body:  "N'oublie pas de remplir ta feuille d'heures",
-              url:   "https://agencesl68.github.io/HK-feuille-d-heure-/"
-            });
+
             let ok = 0, ko = 0;
             for (const c of cibles) {
               if (!c.endpoint) continue;
+              const s = SOCIETES[c.societe] || SOCIETES.HK;   /* repli : HK */
+              const message = JSON.stringify({
+                title: s.titre,
+                body:  "N'oublie pas de remplir ta feuille d'heures",
+                url:   s.url
+              });
               const abonnement = { endpoint: c.endpoint, keys: { p256dh: c.p256dh, auth: c.auth } };
               try {
                 const res = await webpush.sendNotification(abonnement, message, { TTL: 7200 });
-                console.log(`OK  ${c.nom} (${res.statusCode})`); ok++;
+                console.log(`OK  ${c.nom} [${c.societe || "HK"}] (${res.statusCode})`); ok++;
               } catch (e) {
-                console.log(`KO  ${c.nom} : ${e.statusCode || ""} ${e.body || e.message || ""}`); ko++;
+                console.log(`KO  ${c.nom} [${c.societe || "HK"}] : ${e.statusCode || ""} ${e.body || e.message || ""}`); ko++;
               }
             }
             console.log(`Bilan : ${ok} envoye(s), ${ko} echec(s)`);
