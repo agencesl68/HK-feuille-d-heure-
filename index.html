@@ -367,9 +367,9 @@ window.HK_CONFIG = {
   // --- Réglages métier ---
   timezone: "Europe/Paris",
   stepMinutes: 10,                                   // défilement des minutes (10 en 10)
-  /* Historique du salarie : masque tant que le calcul des heures n'est pas
-     valide. Repasser a true pour le rouvrir, il n'y a rien d'autre a faire. */
-  historiqueSalarie: false,
+  /* Historique du salarie. Les totaux suivent le classeur : heures
+     effectives = travaillees + journees payees, trajet compte a part. */
+  historiqueSalarie: true,
   heuresAttendues: { lundi:8, mardi:8, mercredi:8, jeudi:8, vendredi:8, samedi:0, dimanche:0 },
   journeeStandard: { matineeDebut:"07:30", matineeFin:"12:00", apremDebut:"13:00", apremFin:"16:30" }
 };
@@ -784,7 +784,7 @@ window.HK_CONFIG = {
     if(!employe||!employe.accessToken)return;
     /* Compteur d'heures supp : indépendant des feuilles, il ne doit pas
        empêcher la synchro s'il échoue (base pas encore à jour). */
-    SB.bilans().then(b=>{ if(b){BILANS=b; if(vue==="hist")render();} });
+    SB.bilans().then(b=>{ if(b){BILANS=b; if(vue==="historique")render();} });
     const LIMITE=1500;
     try{
       const lignes=await SB.q("feuilles?select=*&order=date.desc&limit="+LIMITE);
@@ -927,36 +927,32 @@ window.HK_CONFIG = {
   function nomMois(ym){const d=new Date(ym+"-01T12:00:00");
     return MOIS[d.getMonth()].toLowerCase()+" "+d.getFullYear();}
 
-  /* Le compteur ne veut rien dire tant que le mois n'est pas fini : on
-     retire les heures payees du mois entier alors que la moitie reste a
-     faire. On affiche donc le dernier mois CLOS, comme dans le classeur,
-     et le mois en cours seulement en avancement. */
+  /* Les cinq lignes du bas du classeur, telles quelles, sur le mois en cours.
+     « Heures effectives » n'y figure pas : le salarie a deja le total du mois
+     juste en dessous, mois par mois. */
   function compteurSupp(){
     if(!BILANS||!BILANS.length)return "";
-    const ym=todayISO().slice(0,7), clos=moisPrec(ym);
-    const arrete=BILANS.filter(b=>b.mois<=clos);
-    const b=arrete.length?arrete[arrete.length-1]:null;
-    const enCours=BILANS.find(x=>x.mois===ym)||null;
-    if(!b&&!enCours)return "";
-    const depart=b&&b.credit==null;   // point de depart repris du fichier
-    const bloc=b?`
-        ${depart?"":`<div class="prow" style="display:flex;justify-content:space-between;padding:4px 0 12px">
-          <span style="color:var(--muted);font-size:13.5px">Heures payées + HS</span>
-          <span style="font-weight:700">${fmtHM(+b.payees)}</span></div>`}
-        <div style="text-align:center;padding:14px 0 6px;${depart?"":"border-top:1px solid var(--line)"}">
-          <div class="num" style="font-size:38px;font-weight:800;line-height:1;color:${+b.cumul<0?"var(--danger)":"var(--accent)"}">${(+b.cumul>0?"+":"")+fmtHM(+b.cumul)}</div>
-          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:6px">${depart?"Point de départ du compteur":"Cumul à créditer sur le mois suivant"}</div>
-          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">arrêté à fin ${nomMois(b.mois)}</div>
-        </div>`:`
-        <div style="text-align:center;padding:10px 0 6px;color:var(--muted);font-size:13.5px">
-          Votre compteur s'affichera à la fin du mois.</div>`;
-    const cours=enCours?`
-        <div class="prow" style="display:flex;justify-content:space-between;padding:10px 0 2px;border-top:1px solid var(--line);margin-top:10px">
-          <span style="color:var(--muted);font-size:13.5px">${cap(nomMois(ym))} en cours</span>
-          <span style="font-weight:700">${fmtHM(+enCours.effectives)} sur ${fmtHM(+enCours.payees)}</span></div>`:"";
+    const ym=todayISO().slice(0,7);
+    const avec=BILANS.filter(b=>b.mois<=ym && b.credit!=null);
+    const b=avec.length?avec[avec.length-1]:null;
+    if(!b)return "";
+    const k=BILANS.findIndex(x=>x.mois===b.mois);
+    const prec=k>0?+BILANS[k-1].cumul:0;
+    const enCours=b.mois===ym;
+    const sg=v=>(v>0?"+":"")+fmtHM(v);
+    const li=(t,v,o)=>{o=o||{};return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0${o.trait?";border-top:1px solid var(--line)":""}">
+        <span style="font-size:13.5px;font-weight:${o.fort?800:600};color:${o.fort?"var(--ink)":"var(--muted)"}">${t}</span>
+        <span style="font-weight:800;font-size:${o.gros?"19px":"15px"}${o.couleur?";color:"+o.couleur:""};white-space:nowrap">${v}</span></div>`;};
     return `
       <div class="sec">Mes heures supplémentaires</div>
-      <div class="panel">${bloc}${cours}</div>`;
+      <div class="panel">
+        ${li("Repos à déduire", +b.repos>0?"-"+fmtHM(+b.repos):"—", {couleur:+b.repos>0?"var(--blue)":""})}
+        ${li("Heures payées + HS", fmtHM(+b.payees), {trait:true})}
+        ${li("TOTAL CRÉDIT D'HEURES SUR LE MOIS", sg(+b.credit), {trait:true,fort:true,couleur:+b.credit<0?"var(--danger)":"var(--accent)"})}
+        ${li("Reste du mois précédent", sg(prec), {trait:true})}
+        ${li("Cumul à créditer sur mois suivant", sg(+b.cumul), {trait:true,fort:true,gros:true,couleur:+b.cumul<0?"var(--danger)":"var(--accent)"})}
+        ${enCours?`<div style="color:var(--muted);font-size:12px;padding:2px 0 6px">${cap(MOIS[+b.mois.slice(5,7)-1].toLowerCase())} n'est pas fini : les deux derniers montants bougeront encore.</div>`:""}
+      </div>`;
   }
 
   function renderHistorique(){
@@ -966,42 +962,58 @@ window.HK_CONFIG = {
     if(histYear==null)histYear=curY;
     const minY=annees.length?+annees[0]:curY, maxY=Math.max(curY,annees.length?+annees[annees.length-1]:curY);
     const ejahr=all.filter(e=>e.iso.slice(0,4)===String(histYear));
-    let totTrav=0,totSupp=0; ejahr.forEach(e=>{if(e.statut==="travail"){totTrav+=e.heuresTotal||((e.heuresJournee||0)+(e.heuresTrajet||0));totSupp+=e.heuresSupp||0;}});
-    // grouper par mois
+
+    /* Le total de l'annee, comme au classeur : les heures travaillees ET les
+       journees payees sans travailler. Le trajet reste a part, exactement
+       comme la colonne « TOTAL HEURES TRAJET » du classeur. */
+    let totEff=0, totTrajet=0;
+    ejahr.forEach(e=>{ totEff+=e.heuresJournee||0;
+                       if(e.statut==="travail") totTrajet+=e.heuresTrajet||0; });
+
     let body="";
     for(let m=11;m>=0;m--){
       const mm=String(m+1).padStart(2,"0");
       const list=ejahr.filter(e=>e.iso.slice(5,7)===mm).sort((a,b)=>b.iso.localeCompare(a.iso));
       if(!list.length)continue;
-      let mt=0; list.forEach(e=>{if(e.statut==="travail")mt+=e.heuresTotal||((e.heuresJournee||0)+(e.heuresTrajet||0));});
+      let mt=0; list.forEach(e=>{ mt+=e.heuresJournee||0; });
       const rows=list.map(e=>{const d=new Date(e.iso+"T12:00:00");
-        const val=e.statut==="travail"?`<span class="dv">${fmtHU(e.heuresTotal||((e.heuresJournee||0)+(e.heuresTrajet||0)))}</span>`:`<span class="dv off ${e.statut}">${e.statutLabel}</span>`;
-        const sub=e.statut==="travail"?(e.heuresSupp>0?"+"+fmtHM(e.heuresSupp)+" supp":"trajet inclus")+(e._pending?" · en attente d'envoi":""):"Journée déclarée";
+        /* La valeur du jour est celle de la colonne « TOTAL » du classeur :
+           la journee seule. Le trajet est annonce en dessous. */
+        const val=e.statut==="travail"
+          ? `<span class="dv">${fmtHM(e.heuresJournee||0)}</span>`
+          : `<span class="dv off ${e.statut}">${e.statutLabel}</span>`;
+        const bouts=[];
+        if(e.statut==="travail"){
+          if(e.chantier) bouts.push(e.chantier);
+          if(e.heuresTrajet>0) bouts.push("trajet "+fmtHM(e.heuresTrajet));
+        } else bouts.push("journée payée");
+        if(e._pending) bouts.push("en attente d'envoi");
         return `<div class="day-row"><div class="dd"><div class="n">${d.getDate()}</div><div class="w">${JOURS[d.getDay()].slice(0,3)}</div></div>
-          <div class="di"><div class="dt">${jourNom(e.iso)}</div><div class="ds">${sub}</div></div>${val}</div>`;}).join("");
-      body+=`<div class="mois-h"><span class="mn">${MOIS[m]}</span><span class="mt">${fmtHU(mt)}</span></div><div class="panel" style="padding:6px 20px">${rows}</div>`;
+          <div class="di"><div class="dt">${jourNom(e.iso)}</div><div class="ds">${bouts.join(" · ")||"—"}</div></div>${val}</div>`;}).join("");
+      body+=`<div class="mois-h"><span class="mn">${MOIS[m]}</span><span class="mt">${fmtHM(mt)}</span></div><div class="panel" style="padding:6px 20px">${rows}</div>`;
     }
     if(!body)body=`<div class="empty"><div class="big">Aucune feuille en ${histYear}</div><div>L'historique s'affichera ici.</div></div>`;
     const nAtt=feuillesEnAttente().length;
-    /* Historique masque : on ne montre aucun total, seulement le compte.
-       Les feuilles continuent de partir normalement. */
+
     const chiffres = !CFG.historiqueSalarie ? "" : `
       <div class="yr">
         <button id="y-prev" ${histYear<=minY?"disabled":""}>${IC.prev}</button>
         <div class="y">${histYear}</div>
         <button id="y-next" ${histYear>=maxY?"disabled":""}>${IC.next}</button>
       </div>
+      <div class="sec">Mes heures, mois par mois</div>
       <div class="panel" style="display:flex;justify-content:space-around;text-align:center">
-        <div><div style="font-size:24px;font-weight:800" class="num">${fmtHM(totTrav)}</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Travaillé en ${histYear}</div></div>
-        <div><div style="font-size:24px;font-weight:800;color:var(--accent)" class="num">${totSupp>0?"+":""}${fmtHM(totSupp)}</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Dépassements du jour</div></div>
+        <div><div style="font-size:24px;font-weight:800" class="num">${fmtHM(totEff)}</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Heures ${histYear}</div></div>
+        <div><div style="font-size:24px;font-weight:800" class="num">${fmtHM(totTrajet)}</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Trajet ${histYear}</div></div>
       </div>
       ${compteurSupp()}
+      <div class="sec">Le détail de mes journées</div>
       ${body}`;
     app.innerHTML=`
       <div class="hero"><div class="hi">${CFG.historiqueSalarie?"Mon historique":"Mon compte"}</div><div class="name" style="text-transform:none">${CFG.historiqueSalarie?"Toutes mes heures":employe.nom}</div></div>
       ${horsLigne?`<div class="offline"><span class="d"></span>Hors ligne${nAtt?` — ${nAtt} feuille${nAtt>1?"s":""} en attente d'envoi`:""}</div>`:""}
       ${chiffres}
-      ${CFG.historiqueSalarie?`<div class="sec">Mon compte</div>`:""}
+      <div class="sec">Mon compte</div>
       <div class="panel">
         <div class="prow" style="display:flex;align-items:center;gap:14px">
           <div class="avatar2">${(employe.nom||"?").trim().charAt(0).toUpperCase()}</div>
