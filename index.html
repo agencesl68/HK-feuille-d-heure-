@@ -922,35 +922,41 @@ window.HK_CONFIG = {
         heures du mois - heures payees - repos pris = credit du mois
         credit du mois + compteur du mois precedent = compteur
      Un REPOS fait donc baisser le compteur, un CONGE non. */
+  function moisPrec(ym){const y=+ym.slice(0,4),m=+ym.slice(5,7),d=new Date(y,m-2,1);
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+  function nomMois(ym){const d=new Date(ym+"-01T12:00:00");
+    return MOIS[d.getMonth()].toLowerCase()+" "+d.getFullYear();}
+
+  /* Le compteur ne veut rien dire tant que le mois n'est pas fini : on
+     retire les heures payees du mois entier alors que la moitie reste a
+     faire. On affiche donc le dernier mois CLOS, comme dans le classeur,
+     et le mois en cours seulement en avancement. */
   function compteurSupp(){
     if(!BILANS||!BILANS.length)return "";
-    const ym=todayISO().slice(0,7);
-    const dispo=BILANS.filter(b=>b.mois<=ym && b.credit!=null);
-    const b=dispo.length?dispo[dispo.length-1]:null;
-    if(!b)return "";
-    const i=BILANS.findIndex(x=>x.mois===b.mois);
-    const prec=i>0?+BILANS[i-1].cumul:0;
-    const cumul=+b.cumul, credit=+b.credit, repos=+b.repos;
-    const d=new Date(b.mois+"-01T12:00:00");
-    const sg=v=>(v>0?"+":"")+fmtHM(v);
+    const ym=todayISO().slice(0,7), clos=moisPrec(ym);
+    const arrete=BILANS.filter(b=>b.mois<=clos);
+    const b=arrete.length?arrete[arrete.length-1]:null;
+    const enCours=BILANS.find(x=>x.mois===ym)||null;
+    if(!b&&!enCours)return "";
+    const depart=b&&b.credit==null;   // point de depart repris du fichier
+    const bloc=b?`
+        ${depart?"":`<div class="prow" style="display:flex;justify-content:space-between;padding:4px 0 12px">
+          <span style="color:var(--muted);font-size:13.5px">Heures payées + HS</span>
+          <span style="font-weight:700">${fmtHM(+b.payees)}</span></div>`}
+        <div style="text-align:center;padding:14px 0 6px;${depart?"":"border-top:1px solid var(--line)"}">
+          <div class="num" style="font-size:38px;font-weight:800;line-height:1;color:${+b.cumul<0?"var(--danger)":"var(--accent)"}">${(+b.cumul>0?"+":"")+fmtHM(+b.cumul)}</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:6px">${depart?"Point de départ du compteur":"Cumul à créditer sur le mois suivant"}</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">arrêté à fin ${nomMois(b.mois)}</div>
+        </div>`:`
+        <div style="text-align:center;padding:10px 0 6px;color:var(--muted);font-size:13.5px">
+          Votre compteur s'affichera à la fin du mois.</div>`;
+    const cours=enCours?`
+        <div class="prow" style="display:flex;justify-content:space-between;padding:10px 0 2px;border-top:1px solid var(--line);margin-top:10px">
+          <span style="color:var(--muted);font-size:13.5px">${cap(nomMois(ym))} en cours</span>
+          <span style="font-weight:700">${fmtHM(+enCours.effectives)} sur ${fmtHM(+enCours.payees)}</span></div>`:"";
     return `
       <div class="sec">Mes heures supplémentaires</div>
-      <div class="panel">
-        <div style="text-align:center;padding:6px 0 14px">
-          <div class="num" style="font-size:38px;font-weight:800;color:${cumul<0?"var(--danger)":"var(--accent)"};line-height:1">${sg(cumul)}</div>
-          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:6px">Compteur au ${MOIS[d.getMonth()].toLowerCase()} ${d.getFullYear()}</div>
-        </div>
-        <div class="prow" style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)">
-          <span style="color:var(--muted);font-size:13.5px">Report du mois précédent</span><span style="font-weight:700">${sg(prec)}</span></div>
-        <div class="prow" style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)">
-          <span style="color:var(--muted);font-size:13.5px">Heures du mois</span><span style="font-weight:700">${fmtHM(+b.effectives)}</span></div>
-        <div class="prow" style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)">
-          <span style="color:var(--muted);font-size:13.5px">Heures payées + HS</span><span style="font-weight:700">${fmtHM(+b.payees)}</span></div>
-        ${repos>0?`<div class="prow" style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)">
-          <span style="color:var(--muted);font-size:13.5px">Repos pris ce mois</span><span style="font-weight:700;color:var(--blue)">-${fmtHM(repos)}</span></div>`:""}
-        <div class="prow" style="display:flex;justify-content:space-between;padding:11px 0 4px;border-top:1px solid var(--line)">
-          <span style="font-weight:700;font-size:13.5px">Gagné ce mois</span><span style="font-weight:800;color:${credit<0?"var(--danger)":"var(--accent)"}">${sg(credit)}</span></div>
-      </div>`;
+      <div class="panel">${bloc}${cours}</div>`;
   }
 
   function renderHistorique(){
