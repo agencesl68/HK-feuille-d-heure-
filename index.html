@@ -220,6 +220,32 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .toast.err{background:var(--danger)}
 
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+
+/* ===== Selecteur d'heure tactile (molettes) ===== */
+.tp-field{width:100%;-webkit-appearance:none;appearance:none;font:inherit;font-size:18px;font-weight:700;
+  color:var(--ink);padding:14px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface-2);
+  text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.02em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tp-field.vide{color:var(--muted);font-weight:600}
+.tp-field:active{border-color:var(--accent)}
+.tp-overlay{position:fixed;inset:0;background:rgba(30,26,20,.34);z-index:60;opacity:0;pointer-events:none;transition:opacity .18s var(--ease)}
+.tp-overlay.on{opacity:1;pointer-events:auto}
+.tp-sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;background:var(--surface);border-radius:22px 22px 0 0;
+  box-shadow:0 -12px 40px rgba(30,26,20,.22);padding:8px 18px calc(18px + env(safe-area-inset-bottom));
+  transform:translateY(100%);transition:transform .24s var(--spring,cubic-bezier(.22,1,.36,1))}
+.tp-sheet.on{transform:translateY(0)}
+.tp-head{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 12px}
+.tp-title{font-weight:800;font-size:16px}
+.tp-ok{border:0;background:var(--accent);color:#fff;font:inherit;font-weight:800;font-size:15px;padding:10px 20px;border-radius:12px;cursor:pointer}
+.tp-cancel{border:0;background:none;color:var(--muted);font:inherit;font-weight:700;font-size:15px;padding:10px 4px;cursor:pointer}
+.tp-wheels{position:relative;display:flex;gap:10px;justify-content:center;height:240px}
+.tp-band{position:absolute;left:0;right:0;top:96px;height:48px;border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);pointer-events:none}
+.tp-col{flex:1;max-width:150px;height:240px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tp-col::-webkit-scrollbar{display:none}
+.tp-col .pad{height:96px}
+.tp-col .it{height:48px;line-height:48px;text-align:center;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;
+  color:var(--muted);scroll-snap-align:center;transition:color .12s,transform .12s}
+.tp-col .it.sel{color:var(--ink);transform:scale(1.06)}
+.tp-sep{align-self:center;font-size:28px;font-weight:800;color:var(--ink)}
 </style>
 <!-- Notifications push — Web Push VAPID standard (aucun SDK tiers) -->
 <script>
@@ -672,20 +698,99 @@ window.HK_CONFIG = {
       <button class="btn-send" id="f-send">${IC.check}Envoyer</button>`;
     bindJour();
   }
+  function champHeure(lab,id,val){
+    const v=(val&&/^\d{1,2}:\d{2}/.test(val))?val.slice(0,5):"";
+    return `<div class="field"><span class="lab">${lab}</span>
+      <div class="tp-field${v?"":" vide"}" id="${id}" role="button" tabindex="0"
+           data-tp="${id}" data-lab="${lab.replace(/"/g,'&quot;')}">${v||"--:--"}</div></div>`;
+  }
   function paire(lD,iD,vD,lF,iF,vF){
-    return `<div class="two">
-      <div class="field"><span class="lab">${lD}</span><input type="time" step="${STEP}" class="in" id="${iD}" value="${vD}"></div>
-      <div class="field"><span class="lab">${lF}</span><input type="time" step="${STEP}" class="in" id="${iF}" value="${vF}"></div></div>`;
+    return `<div class="two">${champHeure(lD,iD,vD)}${champHeure(lF,iF,vF)}</div>`;
   }
   function bindJour(){
     document.getElementById("f-date").addEventListener("change",e=>{state.date=e.target.value||todayISO();sauverBrouillon();render();});
-    [["f-md","matineeDebut"],["f-mf","matineeFin"],["f-ad","apremDebut"],["f-af","apremFin"],
-     ["f-tad","trajetAllerDep"],["f-taa","trajetAllerArr"],["f-trd","trajetRetourDep"],["f-tra","trajetRetourArr"],["f-cha","chantier"],["f-com","commentaire"]]
+    // Champs texte (chantier, commentaire)
+    [["f-cha","chantier"],["f-com","commentaire"]]
       .forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.addEventListener("input",e=>{state[k]=e.target.value;majTot();});});
+    // Champs heure : molette tactile au tap
+    const HEURES={"f-md":"matineeDebut","f-mf":"matineeFin","f-ad":"apremDebut","f-af":"apremFin",
+                  "f-tad":"trajetAllerDep","f-taa":"trajetAllerArr","f-trd":"trajetRetourDep","f-tra":"trajetRetourArr"};
+    Object.keys(HEURES).forEach(id=>{const el=document.getElementById(id);if(!el)return;
+      const ouvre=()=>ouvrirHeure(id,HEURES[id],el.dataset.lab||"");
+      el.addEventListener("click",ouvre);
+      el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();ouvre();}});});
     document.getElementById("q-std").addEventListener("click",()=>{const s=CFG.journeeStandard;Object.assign(state,{matineeDebut:s.matineeDebut,matineeFin:s.matineeFin,apremDebut:s.apremDebut,apremFin:s.apremFin});sauverBrouillon();render();});
     document.getElementById("q-clr").addEventListener("click",()=>{Object.assign(state,{matineeDebut:"",matineeFin:"",apremDebut:"",apremFin:"",trajetAllerDep:"",trajetAllerArr:"",trajetRetourDep:"",trajetRetourArr:""});sauverBrouillon();render();});
     document.getElementById("f-send").addEventListener("click",envoyerJour);
   }
+  /* ---------- Selecteur d'heure a molettes ----------
+     Remplace l'horloge native d'Android, penible a faire tourner. Deux
+     colonnes qui defilent (heures / minutes), un bandeau central = la valeur.
+     Minutes par pas de STEP (10 min par defaut). */
+  let tpCible=null, tpChamp=null;
+  function tpPasMin(){ return Math.max(1, Math.round((CFG.stepMinutes||10))); }
+  function ouvrirHeure(id,cle,lab){
+    tpCible=cle; tpChamp=id;
+    const pas=tpPasMin();
+    const cur=(state[cle]&&/^\d{1,2}:\d{2}/.test(state[cle]))?state[cle]:"07:00";
+    let [ch,cm]=cur.split(":").map(Number);
+    cm=Math.round(cm/pas)*pas; if(cm>=60){cm=0;ch=(ch+1)%24;}
+    let ov=document.getElementById("tp-ov");
+    if(!ov){
+      ov=document.createElement("div"); ov.id="tp-ov"; ov.className="tp-overlay";
+      const heures=[...Array(24).keys()].map(h=>`<div class="it" data-v="${h}">${String(h).padStart(2,"0")}</div>`).join("");
+      const mins=[]; for(let m=0;m<60;m+=pas) mins.push(`<div class="it" data-v="${m}">${String(m).padStart(2,"0")}</div>`);
+      ov.innerHTML=`<div class="tp-sheet" id="tp-sheet" role="dialog" aria-modal="true">
+        <div class="tp-head"><button class="tp-cancel" id="tp-x">Annuler</button>
+          <span class="tp-title" id="tp-title">Heure</span>
+          <button class="tp-ok" id="tp-ok">Valider</button></div>
+        <div class="tp-wheels"><div class="tp-band"></div>
+          <div class="tp-col" id="tp-h"><div class="pad"></div>${heures}<div class="pad"></div></div>
+          <span class="tp-sep">:</span>
+          <div class="tp-col" id="tp-m"><div class="pad"></div>${mins.join("")}<div class="pad"></div></div>
+        </div></div>`;
+      document.body.appendChild(ov);
+      ov.addEventListener("click",e=>{ if(e.target===ov) fermerHeure(); });
+      document.getElementById("tp-x").addEventListener("click",fermerHeure);
+      document.getElementById("tp-ok").addEventListener("click",validerHeure);
+      ["tp-h","tp-m"].forEach(c=>{const col=document.getElementById(c);
+        let t; col.addEventListener("scroll",()=>{clearTimeout(t);t=setTimeout(()=>tpMarque(col),60);});});
+    }
+    document.getElementById("tp-title").textContent=lab||"Heure";
+    tpAligne("tp-h", ch);
+    tpAligne("tp-m", Math.round(cm/pas));
+    ov.classList.add("on");
+    requestAnimationFrame(()=>{document.getElementById("tp-sheet").classList.add("on");});
+  }
+  function tpAligne(colId, index){
+    const col=document.getElementById(colId);
+    // deux frames : le sheet doit etre mesurable avant de calculer le scroll
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ col.scrollTop=index*48; tpMarque(col); }));
+  }
+  function tpMarque(col){
+    const idx=Math.round(col.scrollTop/48);
+    col.querySelectorAll(".it").forEach((el,i)=>el.classList.toggle("sel", i===idx));
+  }
+  function tpValeur(colId){
+    const col=document.getElementById(colId);
+    const idx=Math.max(0,Math.round(col.scrollTop/48));
+    const it=col.querySelectorAll(".it")[idx];
+    return it?+it.dataset.v:0;
+  }
+  function validerHeure(){
+    const h=tpValeur("tp-h"), m=tpValeur("tp-m");
+    const val=String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
+    state[tpCible]=val;
+    const el=document.getElementById(tpChamp);
+    if(el){ el.textContent=val; el.classList.remove("vide"); }
+    majTot(); fermerHeure();
+  }
+  function fermerHeure(){
+    const ov=document.getElementById("tp-ov"); if(!ov)return;
+    const sh=document.getElementById("tp-sheet"); if(sh)sh.classList.remove("on");
+    ov.classList.remove("on");
+  }
+
   function majTot(){const el=document.getElementById("r-tot");if(el)el.innerHTML=fmtHM(heuresTotal());sauverBrouillon();}
 
   function doneView(p){
@@ -930,6 +1035,14 @@ window.HK_CONFIG = {
   /* Les cinq lignes du bas du classeur, telles quelles, sur le mois en cours.
      « Heures effectives » n'y figure pas : le salarie a deja le total du mois
      juste en dessous, mois par mois. */
+  /* Ce que le salarie voit de ses heures supp : deux chiffres, pas plus.
+     - le total du mois        = TOTAL CREDIT D'HEURES SUR LE MOIS
+     - le cumul a crediter     = reporte sur le mois suivant
+     Le mois clos le plus recent fait foi (le mois en cours n'a pas de sens
+     tant qu'il n'est pas fini : on retire les heures payees du mois entier). */
+  /* Les cinq lignes du bas du classeur, dans l'ordre valide. */
+  /* Les cinq lignes du bas du classeur, pour le mois demande. */
+  /* Les cinq lignes du bas du classeur, dans l'ordre valide. */
   function compteurSupp(){
     if(!BILANS||!BILANS.length)return "";
     const ym=todayISO().slice(0,7);
@@ -963,9 +1076,6 @@ window.HK_CONFIG = {
     const minY=annees.length?+annees[0]:curY, maxY=Math.max(curY,annees.length?+annees[annees.length-1]:curY);
     const ejahr=all.filter(e=>e.iso.slice(0,4)===String(histYear));
 
-    /* Le total de l'annee, comme au classeur : les heures travaillees ET les
-       journees payees sans travailler. Le trajet reste a part, exactement
-       comme la colonne « TOTAL HEURES TRAJET » du classeur. */
     let totEff=0, totTrajet=0;
     ejahr.forEach(e=>{ totEff+=e.heuresJournee||0;
                        if(e.statut==="travail") totTrajet+=e.heuresTrajet||0; });
@@ -977,8 +1087,6 @@ window.HK_CONFIG = {
       if(!list.length)continue;
       let mt=0; list.forEach(e=>{ mt+=e.heuresJournee||0; });
       const rows=list.map(e=>{const d=new Date(e.iso+"T12:00:00");
-        /* La valeur du jour est celle de la colonne « TOTAL » du classeur :
-           la journee seule. Le trajet est annonce en dessous. */
         const val=e.statut==="travail"
           ? `<span class="dv">${fmtHM(e.heuresJournee||0)}</span>`
           : `<span class="dv off ${e.statut}">${e.statutLabel}</span>`;
@@ -1030,7 +1138,7 @@ window.HK_CONFIG = {
     if(yp&&histYear>minY)yp.addEventListener("click",()=>{histYear--;renderHistorique();});
     if(yn&&histYear<maxY)yn.addEventListener("click",()=>{histYear++;renderHistorique();});
     const hr=document.getElementById("h-relog");
-    if(hr)hr.addEventListener("click",()=>{ renderLogin(employe?employe.id:""); });  // ne touche PAS aux donnees locales
+    if(hr)hr.addEventListener("click",()=>{ renderLogin(employe?employe.id:""); });
     const hs=document.getElementById("h-sync");
     if(hs)hs.addEventListener("click",async()=>{hs.disabled=true;hs.textContent="Actualisation…";await synchroniser();if(!horsLigne)toast("Données à jour");renderHistorique();});
   }
