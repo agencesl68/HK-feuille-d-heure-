@@ -1133,7 +1133,7 @@ window.HK_CONFIG = {
         <button class="cta line" id="h-sync" style="margin-top:16px">Actualiser mes données</button>
         ${sessionExpiree?`<button class="cta" id="h-relog" style="margin-top:10px">Se reconnecter</button>`:""}
       </div>
-      ${CFG.historiqueSalarie?"":`<div class="hint" style="text-align:center;margin-top:16px">Le récapitulatif de vos heures est en cours de mise au point. Il reviendra dans l'application.</div>`}`;
+      ${CFG.historiqueSalarie?"":`<div class="hint" style="text-align:center;margin-top:16px">Le récapitulatif de vos heures sera bientôt disponible.</div>`}`;
     const yp=document.getElementById("y-prev"),yn=document.getElementById("y-next");
     if(yp&&histYear>minY)yp.addEventListener("click",()=>{histYear--;renderHistorique();});
     if(yn&&histYear<maxY)yn.addEventListener("click",()=>{histYear++;renderHistorique();});
