@@ -21,6 +21,7 @@
   --accent:#FE6001; --accent-2:#FF7A26; --accent-ink:#B24700; --accent-soft:#FFF1E6;
   --danger:#C0392B; --danger-soft:#FBEAE7; --good:#2C6E49; --good-soft:#E7F1EA;
   --amber:#A85E12; --amber-soft:#FBF1DE; --blue:#2B6CB0; --blue-soft:#E4EEF7;
+  --cfa:#6B4FB8; --cfa-soft:#EFEAFA;
   --radius:14px; --radius-lg:20px; --nav-h:66px;
   --ease:cubic-bezier(.2,.7,.2,1); --spring:cubic-bezier(.34,1.42,.5,1);
   --shadow-sm:0 1px 2px rgba(23,24,27,.05),0 1px 3px rgba(23,24,27,.045);
@@ -112,6 +113,8 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .seg .pill[aria-pressed="true"].repos{border-color:var(--blue);background:var(--blue-soft);color:var(--blue)}
 .seg .pill[aria-pressed="true"].absence{border-color:var(--amber);background:var(--amber-soft);color:var(--amber)}
 .seg .pill[aria-pressed="true"].maladie{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
+.seg .pill.cfa{grid-column:1/-1;flex-direction:row;min-height:52px}
+.seg .pill[aria-pressed="true"].cfa{border-color:var(--cfa);background:var(--cfa-soft);color:var(--cfa)}
 
 /* Calendrier */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -127,11 +130,11 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .cal-day.today{box-shadow:inset 0 0 0 2px var(--line-2)}
 .cal-day:active{transform:scale(.9)}
 .cal-day .mk{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%}
-.cal-day .mk.repos{background:var(--blue)}.cal-day .mk.conge{background:var(--accent)}.cal-day .mk.absence{background:var(--amber)}.cal-day .mk.maladie{background:var(--danger)}.cal-day .mk.travail{background:var(--good)}.cal-day .mk.fer{background:#c9c2b6}
+.cal-day .mk.repos{background:var(--blue)}.cal-day .mk.conge{background:var(--accent)}.cal-day .mk.absence{background:var(--amber)}.cal-day .mk.maladie{background:var(--danger)}.cal-day .mk.cfa{background:var(--cfa)}.cal-day .mk.travail{background:var(--good)}.cal-day .mk.fer{background:#c9c2b6}
 .cal-day.dim{color:#cfc9c0;cursor:default}
 .cal-day.ferie{color:var(--muted);cursor:default;background:var(--surface-2)}
 .cal-day.sel{color:#fff;border-color:transparent}
-.cal-day.sel.repos{background:var(--blue)}.cal-day.sel.conge{background:var(--accent)}.cal-day.sel.absence{background:var(--amber)}.cal-day.sel.maladie{background:var(--danger)}
+.cal-day.sel.repos{background:var(--blue)}.cal-day.sel.conge{background:var(--accent)}.cal-day.sel.absence{background:var(--amber)}.cal-day.sel.maladie{background:var(--danger)}.cal-day.sel.cfa{background:var(--cfa)}
 .cal-day.sel .mk{display:none}
 .cal-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
 .cal-legend span{display:inline-flex;align-items:center;gap:6px}
@@ -198,7 +201,7 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .day-row .ds{font-size:12px;color:var(--muted);margin-top:2px}
 .day-row .dv{font-weight:800;font-variant-numeric:tabular-nums;flex:0 0 auto}
 .day-row .dv.off{font-size:12px;text-transform:uppercase}
-.day-row .dv.off.repos{color:var(--blue)}.day-row .dv.off.conge{color:var(--accent-ink)}.day-row .dv.off.absence{color:var(--amber)}.day-row .dv.off.maladie{color:var(--danger)}
+.day-row .dv.off.repos{color:var(--blue)}.day-row .dv.off.conge{color:var(--accent-ink)}.day-row .dv.off.absence{color:var(--amber)}.day-row .dv.off.maladie{color:var(--danger)}.day-row .dv.off.cfa{color:var(--cfa)}
 
 .badge{display:inline-flex;align-items:center;font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px;text-transform:uppercase}
 .badge.late{background:var(--amber-soft);color:var(--amber)}
@@ -392,7 +395,9 @@ window.HK_CONFIG = {
 
   // --- Réglages métier ---
   timezone: "Europe/Paris",
-  stepMinutes: 10,                                   // défilement des minutes (10 en 10)
+  stepMinutes: 15,                                   // minutes au quart d’heure uniquement
+  /* Salariés en alternance : ils ont un bouton « CFA » pour leurs journées d’école. */
+  cfa: ["trabaste","mstalder"],
   /* Historique du salarie. Les totaux suivent le classeur : heures
      effectives = travaillees + journees payees, trajet compte a part. */
   historiqueSalarie: true,
@@ -407,10 +412,12 @@ window.HK_CONFIG = {
   const STEP=(CFG.stepMinutes||10)*60;
   const JOURS=["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
   const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
-  const ABS={conge:"Congé",repos:"Repos",absence:"Absence",maladie:"Maladie"};
+  const ABS={conge:"Congé",repos:"Repos",absence:"Absence",maladie:"Maladie",cfa:"CFA"};
   /* Journees payees sans travailler : elles comptent dans le total du mois,
      comme dans le fichier Excel de HK. Une absence non justifiee, non. */
-  const CREDITE={conge:true,repos:true,maladie:true,absence:false};
+  const CREDITE={conge:true,repos:true,maladie:true,absence:false,cfa:true};
+  function absMin(t){ return t==="cfa"?"CFA":ABS[t].toLowerCase(); }
+  function estCfa(){ return !!(employe&&Array.isArray(CFG.cfa)&&CFG.cfa.indexOf(employe.id)>=0); }
   const CLE="hk_identite";
   const app=document.getElementById("app");
   const who=document.getElementById("who");
@@ -455,6 +462,7 @@ window.HK_CONFIG = {
     absence:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>',
     repos:'<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>',
     maladie:'<svg viewBox="0 0 24 24"><path d="M9 3h6v3h3v6h-3v3H9v-3H6V6h3z" transform="translate(0 1) scale(0.9)"/></svg>',
+    cfa:'<svg viewBox="0 0 24 24"><path d="M2.5 9.5 12 5l9.5 4.5L12 14z"/><path d="M6.5 11.5v4.2c0 1.5 2.5 3 5.5 3s5.5-1.5 5.5-3v-4.2"/><path d="M21.5 9.5v5"/></svg>',
     compte:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>',
     prev:'<svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
     next:'<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>'
@@ -664,6 +672,7 @@ window.HK_CONFIG = {
   function renderJour(){
     const deja=localStorage.getItem(sentKey(state.date));
     if(deja){ app.innerHTML=doneView(JSON.parse(deja)); bindDone(); return; }
+    CHAMPS_HEURE.forEach(k=>{ state[k]=auQuart(state[k]); });
     const tot=heuresTotal();
     app.innerHTML=`
       <div class="daybar">
@@ -726,9 +735,15 @@ window.HK_CONFIG = {
   /* ---------- Selecteur d'heure a molettes ----------
      Remplace l'horloge native d'Android, penible a faire tourner. Deux
      colonnes qui defilent (heures / minutes), un bandeau central = la valeur.
-     Minutes par pas de STEP (10 min par defaut). */
+     Minutes au quart d'heure : 00, 15, 30, 45. */
   let tpCible=null, tpChamp=null;
-  function tpPasMin(){ return Math.max(1, Math.round((CFG.stepMinutes||10))); }
+  function tpPasMin(){ return Math.max(1, Math.round((CFG.stepMinutes||15))); }
+  /* Toute heure est ramenee au quart d'heure le plus proche : un brouillon ou
+     une saisie d'avant (07:10) ne peut plus partir avec des minutes libres. */
+  const CHAMPS_HEURE=["matineeDebut","matineeFin","apremDebut","apremFin","trajetAllerDep","trajetAllerArr","trajetRetourDep","trajetRetourArr"];
+  function auQuart(v){ if(!v||!/^\d{1,2}:\d{2}/.test(v))return v; const pas=tpPasMin();
+    let [h,m]=v.slice(0,5).split(":").map(Number); m=Math.round(m/pas)*pas; if(m>=60){m=0;h=(h+1)%24;}
+    return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"); }
   function ouvrirHeure(id,cle,lab){
     tpCible=cle; tpChamp=id;
     const pas=tpPasMin();
@@ -973,6 +988,7 @@ window.HK_CONFIG = {
           <button class="pill repos" data-type="repos" aria-pressed="${calType==='repos'}">${IC.repos}Repos</button>
           <button class="pill absence" data-type="absence" aria-pressed="${calType==='absence'}">${IC.absence}Absence</button>
           <button class="pill maladie" data-type="maladie" aria-pressed="${calType==='maladie'}">${IC.maladie}Maladie</button>
+          ${estCfa()?`<button class="pill cfa" data-type="cfa" aria-pressed="${calType==='cfa'}">${IC.cfa}CFA</button>`:""}
         </div>
       </div>
       <div class="panel">
@@ -987,14 +1003,16 @@ window.HK_CONFIG = {
           <span><i style="background:var(--blue)"></i>Repos</span>
           <span><i style="background:var(--amber)"></i>Absence</span>
           <span><i style="background:var(--danger)"></i>Maladie</span>
+          ${estCfa()?'<span><i style="background:var(--cfa)"></i>CFA</span>':""}
           <span><i style="background:var(--good)"></i>Travaillé</span>
           <span><i style="background:#c9c2b6"></i>Férié</span>
         </div>
         <div class="hint">Samedis, dimanches et jours fériés non sélectionnables. La semaine va du lundi au vendredi.
           <br><strong>Repos</strong> : journée payée prise sur vos heures supplémentaires, elle fait baisser votre compteur.
-          <strong>Congé</strong> : elle n'y touche pas.</div>
+          <strong>Congé</strong> : elle n'y touche pas.${estCfa()?`
+          <br><strong>CFA</strong> : journée d'école, payée comme une journée normale.`:""}</div>
       </div>
-      <button class="btn-send" id="abs-ok" ${n?"":"disabled"}>Déclarer ${n?(n+" jour"+(n>1?"s":"")+" en "+ABS[calType].toLowerCase()):"— sélectionnez des jours"}</button>`;
+      <button class="btn-send" id="abs-ok" ${n?"":"disabled"}>Déclarer ${n?(n+" jour"+(n>1?"s":"")+" en "+absMin(calType)):"— sélectionnez des jours"}</button>`;
     bindAbsences();
   }
   function bindAbsences(){
@@ -1011,7 +1029,7 @@ window.HK_CONFIG = {
     let ok=0;
     for(const iso of jours){ const p=buildPayload(iso,type); const r=await envoyerSilencieux(p); if(r)ok++; }
     calSel.clear();
-    toast(ok+" jour"+(ok>1?"s":"")+" déclaré"+(ok>1?"s":"")+" en "+ABS[type].toLowerCase());
+    toast(ok+" jour"+(ok>1?"s":"")+" déclaré"+(ok>1?"s":"")+" en "+absMin(type));
     renderAbsences();renderTabbar();
   }
   async function envoyerSilencieux(p){
