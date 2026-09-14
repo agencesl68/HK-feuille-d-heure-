@@ -115,6 +115,11 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .seg .pill[aria-pressed="true"].maladie{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
 .seg .pill.cfa{grid-column:1/-1;flex-direction:row;min-height:52px}
 .seg .pill[aria-pressed="true"].cfa{border-color:var(--cfa);background:var(--cfa-soft);color:var(--cfa)}
+.cfa-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cfa-seg button{min-height:48px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:13px;font-weight:700;border-radius:12px;cursor:pointer;padding:6px 4px;line-height:1.2}
+.cfa-seg button[aria-pressed="true"]{border-color:var(--cfa);background:var(--cfa-soft);color:var(--cfa)}
+.cfa-bloc{display:flex;align-items:center;gap:10px;border:1px dashed var(--cfa);background:var(--cfa-soft);color:var(--cfa);border-radius:12px;padding:14px;font-weight:700;font-size:14px}
+.cfa-bloc svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;flex:none}
 
 /* Calendrier */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -647,8 +652,19 @@ window.HK_CONFIG = {
   function initState(){ state={date:todayISO()}; resetJour(); restaurerBrouillon(); }
   function resetJour(){ const std=CFG.journeeStandard;
     state.matineeDebut=std.matineeDebut;state.matineeFin=std.matineeFin;state.apremDebut=std.apremDebut;state.apremFin=std.apremFin;
-    state.trajetAllerDep="";state.trajetAllerArr="";state.trajetRetourDep="";state.trajetRetourArr="";state.chantier="";state.commentaire=""; }
-  function heuresTravail(){ return dureeH(state.matineeDebut,state.matineeFin)+dureeH(state.apremDebut,state.apremFin); }
+    state.trajetAllerDep="";state.trajetAllerArr="";state.trajetRetourDep="";state.trajetRetourArr="";state.chantier="";state.commentaire="";state.cfaDemi=""; }
+  /* Demi-journee au CFA (alternants) : la moitie des heures dues du jour est
+     comptee sur la demi-journee concernee, 08:00 le matin ou 13:00 l'apres-midi.
+     Le chantier porte « CFA matin » / « CFA apres-midi » : le classeur et
+     l'app Direction l'affichent tel quel, sans rien changer cote base. */
+  function creneauCfa(iso,demi){ const min=Math.round(heuresAttJour(iso)/2*60), deb=demi==="matin"?480:780, fin=deb+min;
+    const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); return [hm(deb),hm(fin)]; }
+  function cfaDemi(){ return estCfa()&&(state.cfaDemi==="matin"||state.cfaDemi==="aprem")?state.cfaDemi:""; }
+  function horaires(){ const r={md:state.matineeDebut,mf:state.matineeFin,ad:state.apremDebut,af:state.apremFin}, c=cfaDemi();
+    if(c==="matin"){ [r.md,r.mf]=creneauCfa(state.date,"matin"); }
+    if(c==="aprem"){ [r.ad,r.af]=creneauCfa(state.date,"aprem"); }
+    return r; }
+  function heuresTravail(){ const h=horaires(); return dureeH(h.md,h.mf)+dureeH(h.ad,h.af); }
   function heuresTrajet(){ return dureeH(state.trajetAllerDep,state.trajetAllerArr)+dureeH(state.trajetRetourDep,state.trajetRetourArr); }
   function heuresTotal(){ return heuresTravail()+heuresTrajet(); }
 
@@ -682,10 +698,19 @@ window.HK_CONFIG = {
         <input type="date" class="date-input" id="f-date" value="${state.date}" max="${todayISO()}">
       </div>
       ${brouillonRepris?`<div class="offline" style="background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)"><span class="d" style="background:var(--accent)"></span>Saisie reprise là où vous l'aviez laissée</div>`:""}
+      ${estCfa()?`<div class="panel">
+        <div class="eyebrow">CFA</div>
+        <div class="cfa-seg">
+          <button data-cfa="" aria-pressed="${!cfaDemi()}">Pas de CFA</button>
+          <button data-cfa="matin" aria-pressed="${cfaDemi()==="matin"}">Matin au CFA</button>
+          <button data-cfa="aprem" aria-pressed="${cfaDemi()==="aprem"}">Après-midi au CFA</button>
+        </div>
+        <div class="hint">Une demi-journée au CFA compte ${fmtHM(heuresAttJour(state.date)/2)} ce jour-là. Remplissez l'autre demi-journée si vous venez travailler.</div>
+      </div>`:""}
       <div class="panel">
         <div class="eyebrow">Horaires</div>
-        ${paire("Matin — début","f-md",state.matineeDebut,"Matin — fin","f-mf",state.matineeFin)}
-        <div class="mt">${paire("Après-midi — début","f-ad",state.apremDebut,"Après-midi — fin","f-af",state.apremFin)}</div>
+        ${cfaDemi()==="matin"?blocCfa("Matin au CFA"):paire("Matin — début","f-md",state.matineeDebut,"Matin — fin","f-mf",state.matineeFin)}
+        <div class="mt">${cfaDemi()==="aprem"?blocCfa("Après-midi au CFA"):paire("Après-midi — début","f-ad",state.apremDebut,"Après-midi — fin","f-af",state.apremFin)}</div>
         <div class="quick"><button class="primary" id="q-std">Journée standard · 8 h</button><button id="q-clr">Vider</button></div>
       </div>
       <div class="panel">
@@ -716,6 +741,9 @@ window.HK_CONFIG = {
   function paire(lD,iD,vD,lF,iF,vF){
     return `<div class="two">${champHeure(lD,iD,vD)}${champHeure(lF,iF,vF)}</div>`;
   }
+  function blocCfa(txt){
+    return `<div class="cfa-bloc">${IC.cfa}<span>${txt} · ${fmtHM(heuresAttJour(state.date)/2)} comptées</span></div>`;
+  }
   function bindJour(){
     document.getElementById("f-date").addEventListener("change",e=>{state.date=e.target.value||todayISO();sauverBrouillon();render();});
     // Champs texte (chantier, commentaire)
@@ -730,6 +758,7 @@ window.HK_CONFIG = {
       el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();ouvre();}});});
     document.getElementById("q-std").addEventListener("click",()=>{const s=CFG.journeeStandard;Object.assign(state,{matineeDebut:s.matineeDebut,matineeFin:s.matineeFin,apremDebut:s.apremDebut,apremFin:s.apremFin});sauverBrouillon();render();});
     document.getElementById("q-clr").addEventListener("click",()=>{Object.assign(state,{matineeDebut:"",matineeFin:"",apremDebut:"",apremFin:"",trajetAllerDep:"",trajetAllerArr:"",trajetRetourDep:"",trajetRetourArr:""});sauverBrouillon();render();});
+    document.querySelectorAll("[data-cfa]").forEach(b=>b.addEventListener("click",()=>{state.cfaDemi=b.dataset.cfa;sauverBrouillon();render();}));
     document.getElementById("f-send").addEventListener("click",envoyerJour);
   }
   /* ---------- Selecteur d'heure a molettes ----------
@@ -834,7 +863,8 @@ window.HK_CONFIG = {
 
   async function envoyerJour(){
     if(heuresTravail()<=0)return toast("Renseignez au moins la matinée ou l'après-midi.",true);
-    if((state.matineeDebut&&state.matineeFin&&dureeH(state.matineeDebut,state.matineeFin)<=0)||(state.apremDebut&&state.apremFin&&dureeH(state.apremDebut,state.apremFin)<=0))return toast("Une heure de fin est avant le début.",true);
+    const hx=horaires();
+    if((hx.md&&hx.mf&&dureeH(hx.md,hx.mf)<=0)||(hx.ad&&hx.af&&dureeH(hx.ad,hx.af)<=0))return toast("Une heure de fin est avant le début.",true);
     const btn=document.getElementById("f-send");btn.disabled=true;btn.textContent="Envoi…";
     const p=buildPayload(state.date,"travail");
     await envoyer(p, ()=>{btn.disabled=false;btn.innerHTML=IC.check+"Envoyer";});
@@ -848,11 +878,13 @@ window.HK_CONFIG = {
        heures dues (7 h un vendredi, 8 h sinon), comme dans le fichier de HK.
        Elles comptent dans le total du mois, jamais dans les heures supp. */
     const hj=trav?heuresTravail():(CREDITE[statut]?att:0), ht=trav?heuresTrajet():0;
+    const hx=horaires(), cfa=trav?({matin:"CFA matin",aprem:"CFA après-midi"}[cfaDemi()]||""):"";
+    const chantierTxt=[cfa,String(state.chantier||"").replace(/["\\\r\n]/g," ").trim()].filter(Boolean).join(" · ").slice(0,60);
     return Object.assign({
       source:"app-hk", employeId:employe.id, employeNom:employe.nom, date:iso, jourSemaine:jourNom(iso),
       statut:statut, statutLabel:ABS[statut]||"Travaillé",
-      chantier:trav?String(state.chantier||"").replace(/["\\\r\n]/g," ").slice(0,60):"", trajetAllerDepart:trav?state.trajetAllerDep:"", trajetAllerArrivee:trav?state.trajetAllerArr:"",
-      matineeDebut:trav?state.matineeDebut:"", matineeFin:trav?state.matineeFin:"", apresMidiDebut:trav?state.apremDebut:"", apresMidiFin:trav?state.apremFin:"",
+      chantier:trav?chantierTxt:"", trajetAllerDepart:trav?state.trajetAllerDep:"", trajetAllerArrivee:trav?state.trajetAllerArr:"",
+      matineeDebut:trav?hx.md:"", matineeFin:trav?hx.mf:"", apresMidiDebut:trav?hx.ad:"", apresMidiFin:trav?hx.af:"",
       trajetRetourDepart:trav?state.trajetRetourDep:"", trajetRetourArrivee:trav?state.trajetRetourArr:"",
       heuresJournee:Math.round(hj*100)/100, heuresTrajet:Math.round(ht*100)/100, heuresTotal:Math.round((hj+ht)*100)/100,
       heuresAttendues:att, heuresSupp:trav?Math.round((hj+ht-att)*100)/100:0,
@@ -1010,7 +1042,7 @@ window.HK_CONFIG = {
         <div class="hint">Samedis, dimanches et jours fériés non sélectionnables. La semaine va du lundi au vendredi.
           <br><strong>Repos</strong> : journée payée prise sur vos heures supplémentaires, elle fait baisser votre compteur.
           <strong>Congé</strong> : elle n'y touche pas.${estCfa()?`
-          <br><strong>CFA</strong> : journée d'école, payée comme une journée normale.`:""}</div>
+          <br><strong>CFA</strong> : journée d'école, payée comme une journée normale. Pour une demi-journée, passez par « Ma journée ».`:""}</div>
       </div>
       <button class="btn-send" id="abs-ok" ${n?"":"disabled"}>Déclarer ${n?(n+" jour"+(n>1?"s":"")+" en "+absMin(calType)):"— sélectionnez des jours"}</button>`;
     bindAbsences();
