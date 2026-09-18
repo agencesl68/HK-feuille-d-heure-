@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vérif notifications — HK</title>
+<style>
+:root{
+  --ink:#17181B; --ink-2:#42444A; --muted:#8C877E; --line:#ECE7DE; --line-2:#DDD7CC;
+  --bg:#F4F2ED; --surface:#FFFFFF; --surface-2:#FBFAF7;
+  --accent:#E2571F; --accent-soft:#FDEDE4; --accent-ink:#B23F13;
+  --good:#2C6E49; --good-soft:#E7F1EA; --danger:#C0392B; --danger-soft:#FBEAE7;
+  --amber:#A85E12; --amber-soft:#FBF1DE;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  padding:16px 14px calc(28px + env(safe-area-inset-bottom));max-width:620px;margin:0 auto}
+h1{font-size:19px;margin:0 0 2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.sec{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:22px 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:6px 16px;
+  box-shadow:0 1px 2px rgba(30,26,20,.05)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;
+  border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.nom{font-weight:700;font-size:14.5px}
+.det{color:var(--muted);font-size:12px;margin-top:2px}
+.tag{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.t-ok{background:var(--good-soft);color:var(--good)}
+.t-push{background:var(--accent-soft);color:var(--accent-ink)}
+.t-rien{background:var(--danger-soft);color:var(--danger)}
+.t-att{background:var(--amber-soft);color:var(--amber)}
+button{font:inherit}
+.cta{width:100%;margin-top:18px;min-height:52px;border:0;border-radius:14px;background:var(--accent);
+  color:#fff;font-weight:800;font-size:15.5px;cursor:pointer}
+.cta:disabled{opacity:.5}
+.cta.armee{background:var(--danger)}
+.ghost{width:100%;margin-top:10px;min-height:44px;border:1px solid var(--line-2);border-radius:12px;
+  background:var(--surface);color:var(--ink-2);font-weight:700;font-size:14px;cursor:pointer}
+.note{font-size:12.5px;color:var(--muted);margin-top:10px}
+.vide{color:var(--muted);padding:14px 0;font-size:13.5px}
+code{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:12px}
+</style>
+</head>
+<body>
+<h1>Vérification des notifications</h1>
+<div class="sub" id="maj">Chargement…</div>
+
+<div class="sec">Mon téléphone</div>
+<div class="panel" id="moi"><div class="vide">Chargement…</div></div>
+<button class="cta" id="activer">Activer les notifications ici</button>
+<button class="ghost" id="tester">M'envoyer une notification de test</button>
+<div class="note">Le test ne part que sur ce téléphone. Personne d'autre ne reçoit rien.</div>
+
+<div class="sec">Feuilles du jour</div>
+<div class="panel" id="jour"><div class="vide">Chargement…</div></div>
+
+<div class="sec">Qui recevrait le rappel maintenant</div>
+<div class="panel" id="cibles"><div class="vide">Chargement…</div></div>
+<button class="cta" id="envoyer" disabled>Envoyer le rappel maintenant</button>
+<div class="note" id="note">Le rappel automatique part à 19h30, du lundi au vendredi.</div>
+
+<div class="sec">Derniers envois</div>
+<div class="panel" id="runs"><div class="vide">Chargement…</div></div>
+<button class="ghost" id="recharger">Recharger</button>
+
+<script>
+const SUPABASE="https://voxtcptopwnautnxsmia.supabase.co";
+const ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZveHRjcHRvcHduYXV0bnhzbWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5Njc3MTMsImV4cCI6MjEwMjU0MzcxM30.Vg0qIfEaitIJ3bdWCT6D0SF_OtUTrp5gKGw0HuWRDcY";
+const WEBHOOK="https://hook.eu1.make.com/h6x49ttkjzth9utx1mmr5fo0uj1ofwty";
+const REPO="agencesl68/HK-feuille-d-heure-";
+const SUB_WEBHOOK="https://hook.eu1.make.com/s9escvs6afqaajdp5q5jc4rd8rkkh43f";
+const VAPID="BEx3Fw-lSV6EB3_8PvyiKgQxwyP5xia-vP4kbB33QDHQAO0xZmEt9oTVaMERHOExwblth_T7j2MS7aMQMuYmzBM";
+const SCOPE="/HK-Direction/";
+const MOI="test-agence";                      /* cle de l'abonnement de ce telephone */
+
+const $=id=>document.getElementById(id);
+function b64ToU8(b64){const pad="=".repeat((4-b64.length%4)%4);const s=(b64+pad).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(s),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a;}
+
+async function monAbonnement(){
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)) return null;
+  const reg=await navigator.serviceWorker.getRegistration(SCOPE);
+  return reg?await reg.pushManager.getSubscription():null;
+}
+
+async function activerIci(){
+  const b=$("activer"); b.disabled=true; b.textContent="Activation…";
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted"){ b.disabled=false; b.textContent="Refusé par le téléphone"; return; }
+    const reg=await navigator.serviceWorker.register(SCOPE+"sw.js",{scope:SCOPE});
+    await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(VAPID)});
+    const j=sub.toJSON();
+    await fetch(SUB_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({employeId:MOI,employeNom:"Téléphone agence",
+        subscription:{endpoint:j.endpoint,keys:{p256dh:j.keys.p256dh,auth:j.keys.auth}}})}).catch(()=>{});
+    b.textContent="Activé"; 
+    setTimeout(charger,2500);
+  }catch(e){ b.disabled=false; b.textContent="Échec : "+e.message; }
+}
+
+async function rendreMoi(){
+  const zone=$("moi"), bAct=$("activer"), bTest=$("tester");
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)){
+    zone.innerHTML='<div class="vide">Ce navigateur ne gère pas les notifications. Sur iPhone, ajoutez la page à l\'écran d\'accueil et rouvrez-la depuis l\'icône.</div>';
+    bAct.style.display="none"; bTest.style.display="none"; return;
+  }
+  const sub=await monAbonnement();
+  const connu=(ETAT.abonnes||[]).some(a=>a.id===MOI);
+  const pret=!!sub&&connu&&Notification.permission==="granted";
+  zone.innerHTML=`<div class="row"><div><div class="nom">Ce téléphone</div>
+    <div class="det">${Notification.permission==="granted"?(connu?"abonnement enregistré":"autorisé, mais pas encore enregistré"):"notifications non autorisées"}</div></div>
+    <span class="tag ${pret?"t-ok":"t-att"}">${pret?"prêt":"à activer"}</span></div>`;
+  bAct.style.display=pret?"none":"block"; bAct.disabled=false;
+  bAct.textContent="Activer les notifications ici";
+  bTest.style.display=pret?"block":"none";
+  bTest.textContent="M'envoyer une notification de test";
+}
+
+async function envoyerTest(){
+  const b=$("tester"); b.disabled=true; b.textContent="Envoi…";
+  try{
+    await fetch(WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({envoyer:"oui",cible:MOI})});
+    b.textContent="Parti — la notification arrive dans ~20 s";
+    setTimeout(()=>{ b.disabled=false; b.textContent="M'envoyer une notification de test"; },25000);
+    setTimeout(chargerRuns,20000);
+  }catch(e){ b.disabled=false; b.textContent="Échec — réessayer"; }
+}
+const aujourdhui=()=>{const d=new Date(),o=d.getTimezoneOffset()*60000;return new Date(d-o).toISOString().slice(0,10);};
+
+async function sb(chemin){
+  const r=await fetch(SUPABASE+"/rest/v1/"+chemin,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}});
+  if(!r.ok) throw new Error("Supabase "+r.status);
+  return r.json();
+}
+
+let ETAT={employes:[],feuilles:[],abonnes:[]};
+
+async function charger(){
+  const iso=aujourdhui();
+  const [employes,feuilles]=await Promise.all([
+    sb("employes?select=id,nom,societe&actif=is.true&order=nom"),
+    sb("feuilles?select=employe_id,statut_label,auto,envoye_le&date=eq."+iso)
+  ]);
+  let abonnes=[];
+  try{
+    const r=await fetch(WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+    abonnes=(await r.json()).abonnes||[];
+  }catch(e){ abonnes=null; }
+  ETAT={employes,feuilles,abonnes:abonnes||[]};
+  ETAT.abonnesKo = abonnes===null;
+  rendre(iso);
+  rendreMoi();
+  chargerRuns();
+}
+
+function rendre(iso){
+  const faites=new Map(ETAT.feuilles.map(f=>[f.employe_id,f]));
+  const abo=new Map((ETAT.abonnes||[]).filter(a=>a.id!==MOI).map(a=>[a.id,a]));
+  const d=new Date();
+  $("maj").textContent=d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})
+    +" · "+String(d.getHours()).padStart(2,"0")+"h"+String(d.getMinutes()).padStart(2,"0");
+
+  $("jour").innerHTML=ETAT.employes.map(e=>{
+    const f=faites.get(e.id);
+    const h=f?new Date(f.envoye_le).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
+    return ligne(e,
+      f?`<span class="tag t-ok">${f.auto?"auto":"envoyée "+h}</span>`
+       :`<span class="tag t-att">pas remplie</span>`);
+  }).join("")||'<div class="vide">Aucun salarié</div>';
+
+  const manquants=ETAT.employes.filter(e=>!faites.has(e.id));
+  const avec=manquants.filter(e=>abo.has(e.id));
+  const sans=manquants.filter(e=>!abo.has(e.id));
+  let html="";
+  if(ETAT.abonnesKo) html='<div class="vide">Liste des abonnements indisponible (scénario Make inactif ?)</div>';
+  else if(!manquants.length) html='<div class="vide">Tout le monde a rempli : aucun rappel ne partirait.</div>';
+  else html=avec.map(e=>ligne(e,'<span class="tag t-push">recevra</span>'))
+              .concat(sans.map(e=>ligne(e,'<span class="tag t-rien">pas de notif</span>'))).join("");
+  $("cibles").innerHTML=html;
+
+  const b=$("envoyer");
+  b.disabled=!avec.length;
+  b.dataset.n=avec.length;
+  b.classList.remove("armee");
+  b.textContent=avec.length?`Envoyer le rappel maintenant (${avec.length})`:"Personne à rappeler";
+  $("note").innerHTML=sans.length
+    ? `<b>${sans.length}</b> salarié(s) n'ont pas autorisé les notifications : ils ne recevront rien tant qu'ils n'auront pas ouvert l'app et accepté. Sur iPhone, l'app doit d'abord être sur l'écran d'accueil.`
+    : "Le rappel automatique part à 19h30, du lundi au vendredi.";
+}
+
+function ligne(e,tag){
+  return `<div class="row"><div><div class="nom">${e.nom}</div>
+    <div class="det">${e.societe==="AE"?"Alsace Épandage":"HK Terrassement"}</div></div>${tag}</div>`;
+}
+
+async function chargerRuns(){
+  try{
+    const r=await fetch(`https://api.github.com/repos/${REPO}/actions/runs?per_page=8`);
+    const d=await r.json();
+    const runs=(d.workflow_runs||[]).filter(x=>/Rappel/.test(x.name)).slice(0,6);
+    const lignes=await Promise.all(runs.map(async x=>{
+      let etape="—";
+      try{
+        const j=await (await fetch(x.jobs_url)).json();
+        const s=(j.jobs&&j.jobs[0]&&j.jobs[0].steps||[]).find(s=>/Envoyer/.test(s.name));
+        etape=s?s.conclusion:"—";
+      }catch(e){}
+      const t=new Date(x.created_at);
+      const envoye=etape==="success";
+      return `<div class="row"><div><div class="nom">${t.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}
+        à ${String(t.getHours()).padStart(2,"0")}h${String(t.getMinutes()).padStart(2,"0")}</div>
+        <div class="det">${x.event==="schedule"?"planifié":"déclenché"}</div></div>
+        <span class="tag ${envoye?"t-ok":"t-rien"}">${envoye?"envoyé":"rien envoyé"}</span></div>`;
+    }));
+    $("runs").innerHTML=lignes.join("")||'<div class="vide">Aucun envoi</div>';
+  }catch(e){ $("runs").innerHTML='<div class="vide">GitHub injoignable</div>'; }
+}
+
+$("envoyer").addEventListener("click",async ()=>{
+  const b=$("envoyer");
+  if(!b.classList.contains("armee")){
+    b.classList.add("armee");
+    b.textContent=`Confirmer l'envoi à ${b.dataset.n} personne(s)`;
+    setTimeout(()=>{ if(b.classList.contains("armee")){ b.classList.remove("armee");
+      b.textContent=`Envoyer le rappel maintenant (${b.dataset.n})`; } },6000);
+    return;
+  }
+  b.disabled=true; b.textContent="Envoi…";
+  try{
+    await fetch(WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({envoyer:"oui"})});
+    b.textContent="Envoyé — vérifiez « Derniers envois »";
+    setTimeout(chargerRuns,12000);
+  }catch(e){ b.disabled=false; b.textContent="Échec — réessayer"; }
+});
+
+$("activer").addEventListener("click",activerIci);
+$("tester").addEventListener("click",envoyerTest);
+$("recharger").addEventListener("click",()=>{ $("recharger").textContent="…"; charger().finally(()=>$("recharger").textContent="Recharger"); });
+charger().catch(e=>{ $("maj").textContent="Erreur : "+e.message; });
+</script>
+</body>
+</html>
