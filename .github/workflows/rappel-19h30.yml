@@ -1,33 +1,29 @@
 name: Rappel feuille d'heures 19h30
 
+# Le declenchement vient de Make (scenario « HK + AE - Rappel 19h30 »), a 19h30
+# pile. Les plannings GitHub ont ete retires : ils partaient avec 2 a 4 heures
+# de retard, le garde-fou « est-il 19h ? » bloquait alors l'envoi, et aucun
+# rappel n'est jamais parti.
 on:
-  schedule:
-    - cron: '30 17 * * 1-5'
-    - cron: '30 18 * * 1-5'
   workflow_dispatch:
+    inputs:
+      cible:
+        description: "Identifiant d'une seule personne a prevenir (vide = tous les retardataires)"
+        required: false
+        default: ""
 
 jobs:
   rappel:
     runs-on: ubuntu-latest
     steps:
-      - name: Est-il vraiment 19h a Paris ?
-        id: check
-        run: |
-          echo "Heure de Paris : $(TZ=Europe/Paris date '+%H:%M')"
-          HEURE=$(TZ=Europe/Paris date +%H)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$HEURE" = "19" ]; then
-            echo "envoyer=oui" >> "$GITHUB_OUTPUT"
-          else
-            echo "envoyer=non" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Envoyer les rappels
-        if: steps.check.outputs.envoyer == 'oui'
         env:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_PUBLIC_KEY: BEx3Fw-lSV6EB3_8PvyiKgQxwyP5xia-vP4kbB33QDHQAO0xZmEt9oTVaMERHOExwblth_T7j2MS7aMQMuYmzBM
           WEBHOOK: https://hook.eu1.make.com/9pl7cisding52u37wcm2kua3hbk15gjs
+          WEBHOOK_ABONNES: https://hook.eu1.make.com/h6x49ttkjzth9utx1mmr5fo0uj1ofwty
           SUBJECT: mailto:sachamuller79@gmail.com
+          CIBLE: ${{ inputs.cible }}
         run: |
           npm install --silent web-push@3.6.7
           cat > envoyer.js <<'SCRIPT'
@@ -44,20 +40,37 @@ jobs:
           };
 
           (async () => {
-            const reponse = await fetch(process.env.WEBHOOK);
-            const cibles = await reponse.json();
-            console.log(`A rappeler : ${cibles.length} personne(s)`);
-            if (!cibles.length) { console.log("Personne n'a oublie -> aucun envoi."); return; }
+            const cible = (process.env.CIBLE || "").trim();
+            let cibles, test = false;
+
+            if (cible) {
+              /* Envoi de test : on vise un seul abonnement, par son identifiant,
+                 sans passer par la liste des retardataires du jour. */
+              test = true;
+              const r = await fetch(process.env.WEBHOOK_ABONNES, {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+              const tous = (await r.json()).abonnes || [];
+              cibles = tous.filter(c => c.id === cible);
+              if (!cibles.length) { console.log(`Aucun abonnement pour « ${cible} » -> rien envoye.`); return; }
+              console.log(`Test : envoi a ${cibles[0].nom || cible} uniquement.`);
+            } else {
+              const reponse = await fetch(process.env.WEBHOOK);
+              cibles = await reponse.json();
+              console.log(`A rappeler : ${cibles.length} personne(s)`);
+              if (!cibles.length) { console.log("Personne n'a oublie -> aucun envoi."); return; }
+            }
 
             let ok = 0, ko = 0;
             for (const c of cibles) {
               if (!c.endpoint) continue;
               const s = SOCIETES[c.societe] || SOCIETES.HK;   /* repli : HK */
-              const message = JSON.stringify({
-                title: s.titre,
-                body:  "N'oublie pas de remplir ta feuille d'heures",
-                url:   s.url
-              });
+              const message = JSON.stringify(test
+                ? { title: "Test de notification",
+                    body:  "Si tu vois ce message, les notifications fonctionnent.",
+                    url:   s.url }
+                : { title: s.titre,
+                    body:  "N'oublie pas de remplir ta feuille d'heures",
+                    url:   s.url });
               const abonnement = { endpoint: c.endpoint, keys: { p256dh: c.p256dh, auth: c.auth } };
               try {
                 const res = await webpush.sendNotification(abonnement, message, { TTL: 7200 });
