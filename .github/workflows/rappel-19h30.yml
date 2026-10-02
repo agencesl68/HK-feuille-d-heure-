@@ -36,7 +36,9 @@ jobs:
             HK: { titre: "HK Terrassement",
                   url:   "https://agencesl68.github.io/HK-feuille-d-heure-/" },
             AE: { titre: "Alsace Épandage",
-                  url:   "https://agencesl68.github.io/AE-feuille-d-heure/" }
+                  url:   "https://agencesl68.github.io/AE-feuille-d-heure/" },
+            AM: { titre: "AM Environnement",
+                  url:   "https://agencesl68.github.io/AM-heure/" }
           };
 
           (async () => {
