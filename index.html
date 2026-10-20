@@ -687,7 +687,14 @@ window.HK_CONFIG = {
       const b=JSON.parse(localStorage.getItem(cleBrouillon()));
       if(!b||!b.state||!b.state.date) return false;
       if(Date.now()-(b.maj||0) > 7*86400000){ effacerBrouillon(); return false; }   // brouillon trop vieux
-      if(localStorage.getItem(sentKey(b.state.date))){ effacerBrouillon(); return false; } // déjà envoyée
+      /* Une feuille existe deja pour ce jour : on jette le brouillon, SAUF si
+         ce n'est qu'une demi-journee posee — l'autre moitie reste a saisir et
+         son brouillon doit survivre. */
+      const envoyee=localStorage.getItem(sentKey(b.state.date));
+      if(envoyee){
+        let demi=null; try{ demi=demiPosee(JSON.parse(envoyee)); }catch(e){}
+        if(!demi){ effacerBrouillon(); return false; }
+      }
       state=b.state; brouillonRepris=true; return true;
     }catch(e){ return false; }
   }
