@@ -716,6 +716,16 @@ window.HK_CONFIG = {
     try{ const raw=localStorage.getItem(sentKey(state.date));
          return raw?demiPosee(JSON.parse(raw)):null; }catch(e){ return null; }
   }
+  /* demiPosee ne repond que pour une demi-journee EN ATTENTE (une moitie
+     renseignee, l'autre pas). Pour l'affichage il faut aussi reconnaitre une
+     journee terminee dont une moitie etait une absence. */
+  function demiAbsence(p){
+    if(!p) return null;
+    const m=p.statutMatin||"", a=p.statutAprem||"";
+    if(m && m!=="travail") return {quand:"matin", type:m};
+    if(a && a!=="travail") return {quand:"aprem", type:a};
+    return null;
+  }
   function demiMot(q){ return q==="matin"?"matin":"après-midi"; }
   /* « le matin » mais « l'après-midi » : l'article s'élide. */
   function demiArt(q,maj){ const a=q==="matin"?"le matin":"l'après-midi";
@@ -916,8 +926,9 @@ window.HK_CONFIG = {
   function doneView(p){
     /* La journee ne vaut que ses horaires : le trajet ne s'y ajoute pas. */
     const tot=p.heuresJournee||0;
+    const dm=demiAbsence(p);
     const corps = p.statut==="travail"
-      ? `<p><span class="strong">${fmtHU(tot)}</span> au total</p><p style="font-size:12.5px">${p._pending?"Enregistrée":"Envoyée"} à ${p._envoyeHeure||"—"}</p>`
+      ? `<p><span class="strong">${fmtHU(tot)}</span> au total</p>${dm?`<p style="font-size:12.5px">${cap(ABS[dm.type]||dm.type)} ${demiArt(dm.quand)}</p>`:""}<p style="font-size:12.5px">${p._pending?"Enregistrée":"Envoyée"} à ${p._envoyeHeure||"—"}</p>`
       : `<p><span class="strong">${p.statutLabel}</span></p>`;
     return `
       <div class="daybar">
@@ -1259,6 +1270,10 @@ window.HK_CONFIG = {
           : `<span class="dv off ${e.statut}">${e.statutLabel}</span>`;
         const bouts=[];
         if(e.statut==="travail"){
+          /* Demi-journee d'absence : on la rappelle, sinon la journee passe
+             pour une journee ordinaire aux yeux du salarie. */
+          const dm=demiAbsence(e);
+          if(dm) bouts.push(cap(ABS[dm.type]||dm.type)+" "+demiArt(dm.quand));
           if(e.chantier) bouts.push(e.chantier);
           if(e.heuresTrajet>0) bouts.push("trajet "+fmtHM(e.heuresTrajet));
         } else bouts.push("journée payée");
