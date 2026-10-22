@@ -22,6 +22,7 @@ jobs:
           VAPID_PUBLIC_KEY: BEx3Fw-lSV6EB3_8PvyiKgQxwyP5xia-vP4kbB33QDHQAO0xZmEt9oTVaMERHOExwblth_T7j2MS7aMQMuYmzBM
           WEBHOOK: https://hook.eu1.make.com/9pl7cisding52u37wcm2kua3hbk15gjs
           WEBHOOK_ABONNES: https://hook.eu1.make.com/h6x49ttkjzth9utx1mmr5fo0uj1ofwty
+          WEBHOOK_PURGE: https://hook.eu1.make.com/ll8act6kr6162m8csei23awyj2kjt4q6
           SUBJECT: mailto:sachamuller79@gmail.com
           CIBLE: ${{ inputs.cible }}
         run: |
@@ -62,7 +63,7 @@ jobs:
               if (!cibles.length) { console.log("Personne n'a oublie -> aucun envoi."); return; }
             }
 
-            let ok = 0, ko = 0;
+            let ok = 0, ko = 0, purges = 0;
             for (const c of cibles) {
               if (!c.endpoint) continue;
               const s = SOCIETES[c.societe] || SOCIETES.HK;   /* repli : HK */
@@ -79,9 +80,26 @@ jobs:
                 console.log(`OK  ${c.nom} [${c.societe || "HK"}] (${res.statusCode})`); ok++;
               } catch (e) {
                 console.log(`KO  ${c.nom} [${c.societe || "HK"}] : ${e.statusCode || ""} ${e.body || e.message || ""}`); ko++;
+                /* 410 / 404 : le telephone s'est desabonne ou l'abonnement a
+                   expire. Il ne remarchera jamais, donc on le supprime : l'app
+                   reproposera l'activation a la prochaine ouverture. Sans ca
+                   la personne ne recoit plus rien et personne ne le voit. */
+                /* Les deux webhooks ne nomment pas l'identifiant pareil :
+                   « employeId » pour les retardataires, « id » pour les abonnes. */
+                const qui = c.employeId || c.id;
+                if (qui && (e.statusCode === 410 || e.statusCode === 404)) {
+                  try {
+                    await fetch(process.env.WEBHOOK_PURGE, {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ employeId: qui }) });
+                    console.log(`    abonnement perime supprime pour ${qui}`); purges++;
+                  } catch (err) {
+                    console.log(`    suppression impossible pour ${qui} : ${err.message}`);
+                  }
+                }
               }
             }
-            console.log(`Bilan : ${ok} envoye(s), ${ko} echec(s)`);
+            console.log(`Bilan : ${ok} envoye(s), ${ko} echec(s), ${purges} perime(s) supprime(s)`);
             if (ok === 0 && ko > 0) process.exit(1);
           })();
           SCRIPT
