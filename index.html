@@ -115,7 +115,6 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .seg .pill[aria-pressed="true"].maladie{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
 .seg .pill.cfa{grid-column:1/-1;flex-direction:row;min-height:52px}
 .seg .pill[aria-pressed="true"].cfa{border-color:var(--cfa);background:var(--cfa-soft);color:var(--cfa)}
-.cfa-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .moitie{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .moitie button{min-height:50px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:13px;font-weight:700;border-radius:12px;cursor:pointer;padding:6px 4px;line-height:1.25}
 .moitie button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
@@ -125,8 +124,6 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .demi-rappel .s{font-size:12.5px;line-height:1.5;color:var(--accent-ink);opacity:.82;margin-top:5px}
 .tp-effacer{display:block;width:100%;min-height:46px;margin:0;border:1px solid var(--line-2);background:var(--surface-2);border-radius:12px;font:inherit;font-size:14px;font-weight:700;color:var(--ink-2);cursor:pointer}
 .tp-pied{padding:12px 14px;border-top:1px solid var(--line)}
-.cfa-seg button{min-height:48px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:13px;font-weight:700;border-radius:12px;cursor:pointer;padding:6px 4px;line-height:1.2}
-.cfa-seg button[aria-pressed="true"]{border-color:var(--cfa);background:var(--cfa-soft);color:var(--cfa)}
 .cfa-bloc{display:flex;align-items:center;gap:10px;border:1px dashed var(--cfa);background:var(--cfa-soft);color:var(--cfa);border-radius:12px;padding:14px;font-weight:700;font-size:14px}
 .cfa-bloc svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;flex:none}
 
@@ -441,6 +438,7 @@ window.HK_CONFIG = {
   stepMinutes: 15,                                   // minutes au quart d’heure uniquement
   /* Salariés en alternance : ils ont un bouton « CFA » pour leurs journées d’école. */
   cfa: ["trabaste","mstalder"],
+  heuresCfa: 7,              // une journee de CFA compte 7 h, tous les jours
   /* Historique du salarie. Les totaux suivent le classeur : heures
      effectives = travaillees + journees payees, trajet compte a part. */
   historiqueSalarie: true,
@@ -701,14 +699,7 @@ window.HK_CONFIG = {
   function initState(){ state={date:todayISO()}; resetJour(); restaurerBrouillon(); }
   function resetJour(){ const std=CFG.journeeStandard;
     state.matineeDebut=std.matineeDebut;state.matineeFin=std.matineeFin;state.apremDebut=std.apremDebut;state.apremFin=std.apremFin;
-    state.trajetAllerDep="";state.trajetAllerArr="";state.trajetRetourDep="";state.trajetRetourArr="";state.chantier="";state.commentaire="";state.cfaDemi=""; }
-  /* Demi-journee au CFA (alternants) : la moitie des heures dues du jour est
-     comptee sur la demi-journee concernee, 08:00 le matin ou 13:00 l'apres-midi.
-     Le chantier porte « CFA matin » / « CFA apres-midi » : le classeur et
-     l'app Direction l'affichent tel quel, sans rien changer cote base. */
-  function creneauCfa(iso,demi){ const min=Math.round(heuresAttJour(iso)/2*60), deb=demi==="matin"?480:780, fin=deb+min;
-    const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); return [hm(deb),hm(fin)]; }
-  function cfaDemi(){ return estCfa()&&(state.cfaDemi==="matin"||state.cfaDemi==="aprem")?state.cfaDemi:""; }
+    state.trajetAllerDep="";state.trajetAllerArr="";state.trajetRetourDep="";state.trajetRetourArr="";state.chantier="";state.commentaire=""; }
 
   /* ---- demi-journees ----
      Convention, la meme qu'en base : une seule des deux moities renseignee
@@ -729,11 +720,11 @@ window.HK_CONFIG = {
   /* « le matin » mais « l'après-midi » : l'article s'élide. */
   function demiArt(q,maj){ const a=q==="matin"?"le matin":"l'après-midi";
     return maj?a.charAt(0).toUpperCase()+a.slice(1):a; }
-  /* Une demi-journee payee credite la moitie des heures dues du jour. */
-  function creditDemi(iso,type){ return CREDITE[type]?heuresAttJour(iso)/2:0; }
-  function horaires(){ const r={md:state.matineeDebut,mf:state.matineeFin,ad:state.apremDebut,af:state.apremFin}, c=cfaDemi();
-    if(c==="matin"){ [r.md,r.mf]=creneauCfa(state.date,"matin"); }
-    if(c==="aprem"){ [r.ad,r.af]=creneauCfa(state.date,"aprem"); }
+  /* Une demi-journee payee credite la moitie des heures dues du jour.
+     Le CFA fait exception : une journee d'ecole vaut 7 h, donc 3h30 la moitie. */
+  function heuresCredit(iso,type){ return type==="cfa"?(CFG.heuresCfa||7):heuresAttJour(iso); }
+  function creditDemi(iso,type){ return CREDITE[type]?heuresCredit(iso,type)/2:0; }
+  function horaires(){ const r={md:state.matineeDebut,mf:state.matineeFin,ad:state.apremDebut,af:state.apremFin};
     /* Demi-journee posee en absence : ses horaires sont ignores, meme si un
        brouillon en gardait. Sinon la moitie absente serait comptee deux fois,
        une fois en heures creditees et une fois en heures faites. */
@@ -746,7 +737,9 @@ window.HK_CONFIG = {
        celles reellement faites sur l'autre moitie. */
     return dureeH(h.md,h.mf)+dureeH(h.ad,h.af)+(d?creditDemi(state.date,d.type):0); }
   function heuresTrajet(){ return dureeH(state.trajetAllerDep,state.trajetAllerArr)+dureeH(state.trajetRetourDep,state.trajetRetourArr); }
-  function heuresTotal(){ return heuresTravail()+heuresTrajet(); }
+  /* La journee se calcule sur le seul onglet Horaires. Le trajet est releve
+     pour la direction mais ne s'ajoute jamais aux heures comptees. */
+  function heuresTotal(){ return heuresTravail(); }
 
   /* Navigation */
   function renderTabbar(){
@@ -781,23 +774,14 @@ window.HK_CONFIG = {
         <input type="date" class="date-input" id="f-date" value="${state.date}" max="${todayISO()}">
       </div>
       ${brouillonRepris?`<div class="offline" style="background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)"><span class="d" style="background:var(--accent)"></span>Saisie reprise là où vous l'aviez laissée</div>`:""}
-      ${estCfa()?`<div class="panel">
-        <div class="eyebrow">CFA</div>
-        <div class="cfa-seg">
-          <button data-cfa="" aria-pressed="${!cfaDemi()}">Pas de CFA</button>
-          <button data-cfa="matin" aria-pressed="${cfaDemi()==="matin"}">Matin au CFA</button>
-          <button data-cfa="aprem" aria-pressed="${cfaDemi()==="aprem"}">Après-midi au CFA</button>
-        </div>
-        <div class="hint">Une demi-journée au CFA compte ${fmtHM(heuresAttJour(state.date)/2)} ce jour-là. Remplissez l'autre demi-journée si vous venez travailler.</div>
-      </div>`:""}
       ${dj?`<div class="demi-rappel">
         <div class="t">${cap(ABS[dj.type]||dj.type)} ${demiArt(dj.quand)} · ${fmtHM(creditDemi(state.date,dj.type))} comptées</div>
         <div class="s">Déclaré depuis l'onglet Absences. Remplissez votre ${demiMot(dj.quand==="matin"?"aprem":"matin")} ci-dessous.</div>
       </div>`:""}
       <div class="panel">
         <div class="eyebrow">Horaires</div>
-        ${dj&&dj.quand==="matin"?"":(cfaDemi()==="matin"?blocCfa("Matin au CFA"):paire("Matin — début","f-md",state.matineeDebut,"Matin — fin","f-mf",state.matineeFin))}
-        <div class="${dj&&dj.quand==="matin"?"":"mt"}">${dj&&dj.quand==="aprem"?"":(cfaDemi()==="aprem"?blocCfa("Après-midi au CFA"):paire("Après-midi — début","f-ad",state.apremDebut,"Après-midi — fin","f-af",state.apremFin))}</div>
+        ${dj&&dj.quand==="matin"?"":paire("Matin — début","f-md",state.matineeDebut,"Matin — fin","f-mf",state.matineeFin)}
+        <div class="${dj&&dj.quand==="matin"?"":"mt"}">${dj&&dj.quand==="aprem"?"":paire("Après-midi — début","f-ad",state.apremDebut,"Après-midi — fin","f-af",state.apremFin)}</div>
         <div class="quick"><button class="primary" id="q-std">Journée standard · 8 h</button><button id="q-clr">Vider</button></div>
       </div>
       <div class="panel">
@@ -814,7 +798,7 @@ window.HK_CONFIG = {
       <div class="ledger">
         <div class="k">Total de la journée</div>
         <div class="big num" id="r-tot">${fmtHM(tot)}</div>
-        <div class="note">trajet inclus</div>
+        <div class="note">trajet non compté</div>
       </div>
       <button class="btn-send" id="f-send">${IC.check}Envoyer</button>`;
     bindJour();
@@ -827,9 +811,6 @@ window.HK_CONFIG = {
   }
   function paire(lD,iD,vD,lF,iF,vF){
     return `<div class="two">${champHeure(lD,iD,vD)}${champHeure(lF,iF,vF)}</div>`;
-  }
-  function blocCfa(txt){
-    return `<div class="cfa-bloc">${IC.cfa}<span>${txt} · ${fmtHM(heuresAttJour(state.date)/2)} comptées</span></div>`;
   }
   function bindJour(){
     document.getElementById("f-date").addEventListener("change",e=>{state.date=e.target.value||todayISO();sauverBrouillon();render();});
@@ -845,7 +826,6 @@ window.HK_CONFIG = {
       el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();ouvre();}});});
     document.getElementById("q-std").addEventListener("click",()=>{const s=CFG.journeeStandard;Object.assign(state,{matineeDebut:s.matineeDebut,matineeFin:s.matineeFin,apremDebut:s.apremDebut,apremFin:s.apremFin});sauverBrouillon();render();});
     document.getElementById("q-clr").addEventListener("click",()=>{Object.assign(state,{matineeDebut:"",matineeFin:"",apremDebut:"",apremFin:"",trajetAllerDep:"",trajetAllerArr:"",trajetRetourDep:"",trajetRetourArr:""});sauverBrouillon();render();});
-    document.querySelectorAll("[data-cfa]").forEach(b=>b.addEventListener("click",()=>{state.cfaDemi=b.dataset.cfa;sauverBrouillon();render();}));
     document.getElementById("f-send").addEventListener("click",envoyerJour);
   }
   /* ---------- Selecteur d'heure a molettes ----------
@@ -973,19 +953,19 @@ window.HK_CONFIG = {
     /* Un conge, un repos ou un arret maladie est paye : la journee porte les
        heures dues (7 h un vendredi, 8 h sinon), comme dans le fichier de HK.
        Elles comptent dans le total du mois, jamais dans les heures supp. */
-    const hj=trav?heuresTravail():(CREDITE[statut]?att:0), ht=trav?heuresTrajet():0;
-    const hx=horaires(), cfa=trav?({matin:"CFA matin",aprem:"CFA après-midi"}[cfaDemi()]||""):"";
-    const chantierTxt=[cfa,String(state.chantier||"").replace(/["\\\r\n]/g," ").trim()].filter(Boolean).join(" · ").slice(0,60);
+    const hj=trav?heuresTravail():(CREDITE[statut]?heuresCredit(iso,statut):0), ht=trav?heuresTrajet():0;
+    const hx=horaires();
+    const chantierTxt=String(state.chantier||"").replace(/["\\\r\n]/g," ").trim().slice(0,60);
     return Object.assign({
       source:"app-hk", employeId:employe.id, employeNom:employe.nom, date:iso, jourSemaine:jourNom(iso),
       statut:statut, statutLabel:ABS[statut]||"Travaillé",
       chantier:trav?chantierTxt:"", trajetAllerDepart:trav?state.trajetAllerDep:"", trajetAllerArrivee:trav?state.trajetAllerArr:"",
       matineeDebut:trav?hx.md:"", matineeFin:trav?hx.mf:"", apresMidiDebut:trav?hx.ad:"", apresMidiFin:trav?hx.af:"",
       trajetRetourDepart:trav?state.trajetRetourDep:"", trajetRetourArrivee:trav?state.trajetRetourArr:"",
-      heuresJournee:Math.round(hj*100)/100, heuresTrajet:Math.round(ht*100)/100, heuresTotal:Math.round((hj+ht)*100)/100,
+      heuresJournee:Math.round(hj*100)/100, heuresTrajet:Math.round(ht*100)/100, heuresTotal:Math.round(hj*100)/100,
       statutMatin: trav?(dj?(dj.quand==="matin"?dj.type:"travail"):""):"",
       statutAprem: trav?(dj?(dj.quand==="aprem"?dj.type:"travail"):""):"",
-      heuresAttendues:att, heuresSupp:trav?Math.round((hj+ht-att)*100)/100:0,
+      heuresAttendues:att, heuresSupp:trav?Math.round((hj-att)*100)/100:0,
       commentaire:trav?String(state.commentaire||"").replace(/["\\\r\n]/g," ").slice(0,200):"", envoyeLe:now.toISOString(), _envoyeHeure:envoyeHeure
     }, extra||{});
   }
@@ -1129,8 +1109,9 @@ window.HK_CONFIG = {
     const jours=["L","M","M","J","V","S","D"].map(j=>`<div class="cal-hd">${j}</div>`).join("");
     const n=calSel.size;
     /* Heures affichees sous les boutons : celles du premier jour choisi,
-       sinon celles d'aujourd'hui. Le vendredi ne fait pas le meme horaire. */
-    const attDemi=heuresAttJour(calSel.size?Array.from(calSel).sort()[0]:todayISO());
+       sinon celles d'aujourd'hui. Le vendredi ne fait pas le meme horaire,
+       et une journee de CFA vaut 7 h quel que soit le jour. */
+    const attDemi=heuresCredit(calSel.size?Array.from(calSel).sort()[0]:todayISO(), calType);
     app.innerHTML=`
       <div class="hero"><div class="hi">Déclarer une absence</div><div class="name" style="text-transform:none">Congés & absences</div></div>
       <div class="panel">
