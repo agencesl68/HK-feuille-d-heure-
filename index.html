@@ -914,7 +914,8 @@ window.HK_CONFIG = {
   function majTot(){const el=document.getElementById("r-tot");if(el)el.innerHTML=fmtHM(heuresTotal());sauverBrouillon();}
 
   function doneView(p){
-    const tot=(p.heuresJournee||0)+(p.heuresTrajet||0);
+    /* La journee ne vaut que ses horaires : le trajet ne s'y ajoute pas. */
+    const tot=p.heuresJournee||0;
     const corps = p.statut==="travail"
       ? `<p><span class="strong">${fmtHU(tot)}</span> au total</p><p style="font-size:12.5px">${p._pending?"Enregistrée":"Envoyée"} à ${p._envoyeHeure||"—"}</p>`
       : `<p><span class="strong">${p.statutLabel}</span></p>`;
