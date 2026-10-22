@@ -223,6 +223,14 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 
 /* CTA notifications */
 .notif-cta{max-width:540px;margin:0 auto;padding:0 18px}
+.notif-ov{position:fixed;inset:0;z-index:70;background:rgba(23,24,27,.72);display:flex;align-items:center;justify-content:center;padding:22px}
+.notif-ov .bte{background:var(--surface);border-radius:20px;padding:26px 22px;max-width:420px;width:100%;box-shadow:var(--shadow-lg);text-align:center}
+.notif-ov .ic{font-size:40px;line-height:1;margin-bottom:10px}
+.notif-ov h2{margin:0 0 10px;font-size:19px;font-weight:800;color:var(--ink)}
+.notif-ov p{margin:0 0 6px;font-size:14px;line-height:1.55;color:var(--ink-2)}
+.notif-ov ol{text-align:left;margin:10px 0 0;padding-left:20px;font-size:14px;line-height:1.7;color:var(--ink-2)}
+.notif-ov .go{width:100%;margin-top:18px;border:none;border-radius:14px;background:var(--accent);color:#fff;font:inherit;font-size:15px;font-weight:800;padding:16px;cursor:pointer;box-shadow:var(--shadow-accent)}
+.notif-ov .plus-tard{display:block;width:100%;margin-top:12px;background:none;border:none;font:inherit;font-size:13px;color:var(--muted);text-decoration:underline;cursor:pointer}
 .notif-cta:empty{display:none}
 .notif-cta-btn{width:100%;margin-top:14px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);font:inherit;font-weight:700;font-size:14px;border-radius:12px;padding:13px;cursor:pointer;transition:.14s var(--spring)}
 .notif-cta-btn:active{transform:scale(.98)}
@@ -340,7 +348,45 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
         await HK_NOTIF.envoyer(sub);
         if(sub) HK_NOTIF.noter(true);
       }catch(e){ if(btn)btn.textContent="Erreur : "+(e&&e.message?e.message:e); }
+      var ov=document.getElementById("notif-ov"); if(ov) ov.remove();
       HK_NOTIF.refreshCta();
+    },
+
+    /* Tant que les rappels ne sont pas actifs, on barre l'ecran a l'ouverture.
+       La carte seule passait inaperçue : la moitie de l'equipe n'etait pas
+       abonnee et ne recevait donc jamais le rappel du soir. « Plus tard »
+       laisse passer pour cette fois, la fenetre revient a la prochaine
+       ouverture tant que ce n'est pas regle. */
+    repousse:false,
+    inviter:function(etat){
+      if(HK_NOTIF.repousse) return;
+      if(document.getElementById("notif-ov")) return;
+      var corps, bouton;
+      if(etat==="ios"){
+        corps='<p>Sans eux, personne ne vous préviendra si votre feuille n\'est pas remplie.</p>'
+            + '<p>Sur iPhone, l\'app doit d\'abord être sur l\'écran d\'accueil :</p>'
+            + '<ol><li>Touchez <b>Partager</b> en bas de l\'écran</li>'
+            + '<li>Choisissez <b>Sur l\'écran d\'accueil</b></li>'
+            + '<li>Rouvrez l\'app depuis son icône</li></ol>';
+        bouton='<button type="button" class="plus-tard" id="notif-ov-fermer">J\'ai compris</button>';
+      } else if(etat==="denied"){
+        corps='<p>Les rappels sont bloqués sur ce téléphone, vous ne recevrez rien le soir.</p>'
+            + '<p>Pour les réactiver : <b>Réglages</b> → <b>Notifications</b> → cette app → autoriser.</p>';
+        bouton='<button type="button" class="plus-tard" id="notif-ov-fermer">J\'ai compris</button>';
+      } else {
+        corps='<p>Un rappel à 19h30 les jours où votre feuille d\'heures n\'est pas remplie.</p>'
+            + '<p>Sans autorisation, vous ne recevrez rien.</p>';
+        bouton='<button type="button" class="go" id="notif-ov-go">Activer les notifications</button>'
+             + '<button type="button" class="plus-tard" id="notif-ov-fermer">Plus tard</button>';
+      }
+      var ov=document.createElement("div");
+      ov.id="notif-ov"; ov.className="notif-ov";
+      ov.innerHTML='<div class="bte"><div class="ic">🔔</div><h2>Activez les rappels</h2>'+corps+bouton+'</div>';
+      document.body.appendChild(ov);
+      var f=document.getElementById("notif-ov-fermer");
+      if(f) f.addEventListener("click",function(){ HK_NOTIF.repousse=true; ov.remove(); });
+      var g=document.getElementById("notif-ov-go");
+      if(g) g.addEventListener("click",function(){ HK_NOTIF.activer(g); });
     },
 
     refreshCta:async function(){
@@ -378,6 +424,12 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
            + '<div class="nc-d">Un rappel à 19h30 si votre feuille d\'heures n\'est pas remplie. Sans autorisation, vous ne recevrez rien.</div>'
            + '<button type="button" id="notif-btn" class="notif-cta-btn">Activer les notifications</button></div>';
       }
+      /* meme decision que la carte : si elle a quelque chose a dire,
+         c'est que les rappels ne sont pas actifs. */
+      if(perm==="denied") HK_NOTIF.inviter("denied");
+      else if(!masquer && iOS && !installe) HK_NOTIF.inviter("ios");
+      else if(!masquer && possible) HK_NOTIF.inviter("activer");
+      else { var vieux=document.getElementById("notif-ov"); if(vieux) vieux.remove(); }
       el.innerHTML=html+(HK_DEBUG?'<div class="notif-diag">perm:'+perm+' · token:'+(sub?"OUI":"non")+' · memo:'+(HK_NOTIF.lu()?"1":"0")+' · '+HK_VERSION+'</div>':"");
       var b=document.getElementById("notif-btn");
       if(b)b.addEventListener("click",function(){HK_NOTIF.activer(b);});
