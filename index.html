@@ -223,6 +223,11 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 
 /* CTA notifications */
 .notif-cta{max-width:540px;margin:0 auto;padding:0 18px}
+.annonce{max-width:540px;margin:12px auto 0;padding:0 18px}
+.annonce .bte{background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:15px 17px;position:relative}
+.annonce .t{font-weight:800;font-size:14px;color:var(--accent-ink);padding-right:22px}
+.annonce .m{font-size:13px;line-height:1.55;color:var(--accent-ink);opacity:.88;margin-top:5px;white-space:pre-line}
+.annonce .x{position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;line-height:1;color:var(--accent-ink);opacity:.55;cursor:pointer;padding:2px 4px}
 .notif-ov{position:fixed;inset:0;z-index:70;background:rgba(23,24,27,.72);display:flex;align-items:center;justify-content:center;padding:22px}
 .notif-ov .bte{background:var(--surface);border-radius:20px;padding:26px 22px;max-width:420px;width:100%;box-shadow:var(--shadow-lg);text-align:center}
 .notif-ov .ic{font-size:40px;line-height:1;margin-bottom:10px}
@@ -445,6 +450,7 @@ input[type=time].in{font-variant-numeric:tabular-nums;letter-spacing:.02em}
   <div class="who" id="who"></div>
 </div>
 <div id="notif-cta" class="notif-cta"></div>
+<div id="annonce" class="annonce"></div>
 <main class="wrap" id="app"></main>
 <nav id="tabbar" class="tabbar" aria-label="Navigation principale"></nav>
 
@@ -1093,7 +1099,37 @@ window.HK_CONFIG = {
     }
     if(n){horsLigne=false;toast(n+" feuille"+(n>1?"s":"")+" synchronisée"+(n>1?"s":""));render();}
   }
+  /* Annonces : un message pose dans Supabase s'affiche en haut de l'app,
+     sans redeployer. Masque une fois lu, par identifiant de message. */
+  async function chargerAnnonces(){
+    var el=document.getElementById("annonce"); if(!el) return;
+    try{
+      /* Appel direct avec la cle publique : les annonces sont lisibles
+         sans session, donc meme jeton expire ou reseau capricieux. */
+      var r=await fetch(SB.base()+"/rest/v1/annonces?select=id,titre,message,societe"
+                        +"&order=cree_le.desc&limit=5",
+        {headers:{apikey:CFG.supabaseKey,Authorization:"Bearer "+CFG.supabaseKey}});
+      if(!r.ok) return;
+      var l=await r.json();
+      if(!Array.isArray(l)) return;
+      var soc=(employe&&employe.societe)||"HK";
+      var a=l.find(function(x){ return (!x.societe || x.societe===soc)
+                                   && !localStorage.getItem("hk_annonce_lue_"+x.id); });
+      if(!a){ el.innerHTML=""; return; }
+      el.innerHTML='<div class="bte"><button class="x" id="annonce-x" aria-label="Fermer">&times;</button>'
+                 + '<div class="t">'+String(a.titre).replace(/</g,"&lt;")+'</div>'
+                 + '<div class="m">'+String(a.message).replace(/</g,"&lt;")+'</div></div>';
+      document.getElementById("annonce-x").addEventListener("click",function(){
+        try{ localStorage.setItem("hk_annonce_lue_"+a.id,"1"); }catch(e){}
+        el.innerHTML="";
+      });
+    }catch(e){ /* hors ligne : pas d'annonce, ce n'est pas bloquant */ }
+  }
+
   async function chargerServeur(){
+    /* L'annonce se lit avec la cle publique : on l'affiche meme si le
+       jeton a expire ou si le reseau du chantier est capricieux. */
+    chargerAnnonces();
     if(!employe||!employe.accessToken)return;
     /* Compteur d'heures supp : indépendant des feuilles, il ne doit pas
        empêcher la synchro s'il échoue (base pas encore à jour). */
