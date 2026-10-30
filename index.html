@@ -539,6 +539,15 @@ window.HK_CONFIG = {
   /* Affichage des totaux au format XXhXX (9.15 -> "9h09"). */
   function fmtHM(h){const n=h<0,t=Math.round(Math.abs(h)*60),H=Math.floor(t/60),M=t%60;return (n?"-":"")+H+"h"+String(M).padStart(2,"0");}
   function cap(s){return (s||"").charAt(0).toUpperCase()+(s||"").slice(1);}
+  /* Chez HK la semaine va du lundi au vendredi : le samedi et le dimanche
+     n'existent pas dans le decompte. Le classeur Google Sheets les ignore
+     depuis toujours (« continue when dow > 5 »), la vue « bilans » aussi
+     depuis le 30/10/2026. L'app ne doit donc ni les faire saisir ni les
+     additionner, sinon elle affiche un total que le classeur ne connait pas. */
+  function weekEnd(iso){ const d=new Date(iso+"T12:00:00").getDay(); return d===0||d===6; }
+  function versOuvre(iso){ const d=new Date(iso+"T12:00:00");
+    while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()-1);
+    const o=d.getTimezoneOffset()*60000; return new Date(d-o).toISOString().slice(0,10); }
   function slug(s){return s.toString().toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
   function sentKey(iso){return "hk_sent_"+employe.id+"_"+iso;}
   function paques(y){var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da);}
@@ -754,7 +763,7 @@ window.HK_CONFIG = {
       state=b.state; brouillonRepris=true; return true;
     }catch(e){ return false; }
   }
-  function initState(){ state={date:todayISO()}; resetJour(); restaurerBrouillon(); }
+  function initState(){ state={date:versOuvre(todayISO())}; resetJour(); restaurerBrouillon(); }
   function resetJour(){ const std=CFG.journeeStandard;
     state.matineeDebut=std.matineeDebut;state.matineeFin=std.matineeFin;state.apremDebut=std.apremDebut;state.apremFin=std.apremFin;
     state.trajetAllerDep="";state.trajetAllerArr="";state.trajetRetourDep="";state.trajetRetourArr="";state.chantier="";state.commentaire=""; }
@@ -881,7 +890,7 @@ window.HK_CONFIG = {
     return `<div class="two">${champHeure(lD,iD,vD)}${champHeure(lF,iF,vF)}</div>`;
   }
   function bindJour(){
-    document.getElementById("f-date").addEventListener("change",e=>{state.date=e.target.value||todayISO();sauverBrouillon();render();});
+    document.getElementById("f-date").addEventListener("change",e=>{const v=e.target.value||todayISO();if(weekEnd(v)){e.target.value=state.date;return toast("Le samedi et le dimanche ne se saisissent pas.",true);}state.date=v;sauverBrouillon();render();});
     // Champs texte (chantier, commentaire)
     [["f-cha","chantier"],["f-com","commentaire"]]
       .forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.addEventListener("input",e=>{state[k]=e.target.value;majTot();});});
@@ -1004,7 +1013,7 @@ window.HK_CONFIG = {
   }
   function bindDone(){
     const d=document.getElementById("f-date");
-    if(d)d.addEventListener("change",e=>{state.date=e.target.value||todayISO();resetJour();render();});
+    if(d)d.addEventListener("change",e=>{const v=e.target.value||todayISO();if(weekEnd(v)){e.target.value=state.date;return toast("Le samedi et le dimanche ne se saisissent pas.",true);}state.date=v;resetJour();render();});
   }
 
   async function envoyerJour(){
@@ -1392,7 +1401,7 @@ window.HK_CONFIG = {
     const curY=+todayISO().slice(0,4);
     if(histYear==null)histYear=curY;
     const minY=annees.length?+annees[0]:curY, maxY=Math.max(curY,annees.length?+annees[annees.length-1]:curY);
-    const ejahr=all.filter(e=>e.iso.slice(0,4)===String(histYear));
+    const ejahr=all.filter(e=>e.iso.slice(0,4)===String(histYear) && !weekEnd(e.iso));
 
     let totEff=0, totTrajet=0;
     ejahr.forEach(e=>{ totEff+=e.heuresJournee||0;
