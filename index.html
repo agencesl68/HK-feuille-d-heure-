@@ -1176,7 +1176,10 @@ window.HK_CONFIG = {
       horsLigne=false;render();
     }catch(e){ horsLigne=true;render(); }               // reseau coupe : on garde tout
   }
-  async function synchroniser(){ await renvoyerEnAttente(); await chargerServeur(); }
+  /* Date de la derniere synchro reussie ou tentee : sert a ne pas rappeler
+     le serveur a chaque fois que l'ecran se rallume. */
+  let derniereSynchro=0;
+  async function synchroniser(){ derniereSynchro=Date.now(); await renvoyerEnAttente(); await chargerServeur(); }
 
   /* ---------------- ABSENCES (calendrier) ---------------- */
   function renderAbsences(){
@@ -1306,32 +1309,81 @@ window.HK_CONFIG = {
      - le cumul a crediter     = reporte sur le mois suivant
      Le mois clos le plus recent fait foi (le mois en cours n'a pas de sens
      tant qu'il n'est pas fini : on retire les heures payees du mois entier). */
-  /* Les cinq lignes du bas du classeur, dans l'ordre valide. */
-  /* Les cinq lignes du bas du classeur, pour le mois demande. */
-  /* Les cinq lignes du bas du classeur, dans l'ordre valide. */
-  function compteurSupp(){
+  /* Le bilan du salarie, mois par mois, exactement comme l'app Direction :
+     chaque mois a sa ligne, le mois en cours est ouvert, les mois clos sont
+     replies sur leur cumul et s'ouvrent au clic. C'est ce qui rend visible
+     ici une correction faite la-bas sur un mois deja termine : avant, seul
+     le dernier mois etait affiche et la correction restait invisible. */
+  function compteurSupp(annee){
     if(!BILANS||!BILANS.length)return "";
     const ym=todayISO().slice(0,7);
-    const avec=BILANS.filter(b=>b.mois<=ym && b.credit!=null);
-    const b=avec.length?avec[avec.length-1]:null;
-    if(!b)return "";
-    const k=BILANS.findIndex(x=>x.mois===b.mois);
-    const prec=k>0?+BILANS[k-1].cumul:0;
-    const enCours=b.mois===ym;
+    const an=String(annee||ym.slice(0,4));
+    /* Les mois a venir (un conge pose en avance) n'ont aucun sens a afficher :
+       les heures payees du mois entier y sont deja deduites. */
+    const lignes=BILANS.filter(b=>b.mois.slice(0,4)===an && b.mois<=ym)
+                       .sort((a,b)=>b.mois.localeCompare(a.mois));
+    if(!lignes.length)return "";
+
     const sg=v=>(v>0?"+":"")+fmtHM(v);
-    const li=(t,v,o)=>{o=o||{};return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0${o.trait?";border-top:1px solid var(--line)":""}">
+    const li=(t,v,o)=>{o=o||{};return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0${o.trait?";border-top:1px solid var(--line)":""}">
         <span style="font-size:13.5px;font-weight:${o.fort?800:600};color:${o.fort?"var(--ink)":"var(--muted)"}">${t}</span>
         <span style="font-weight:800;font-size:${o.gros?"19px":"15px"}${o.couleur?";color:"+o.couleur:""};white-space:nowrap">${v}</span></div>`;};
-    return `
-      <div class="sec">Mes heures supplémentaires</div>
-      <div class="panel">
-        ${li("Repos à déduire", +b.repos>0?"-"+fmtHM(+b.repos):"—", {couleur:+b.repos>0?"var(--blue)":""})}
+
+    const blocs=lignes.map(b=>{
+      /* Report = cumul du dernier mois anterieur, cherche par la date et non
+         par l'index : l'annee affichee n'est pas forcement la premiere. */
+      const ant=BILANS.filter(x=>x.mois<b.mois);
+      const prec=ant.length?+ant[ant.length-1].cumul:0;
+      const enCours=b.mois===ym, depart=b.credit==null;
+      const etiq=depart?`<span class="badge" style="background:var(--surface-2);color:var(--muted);white-space:nowrap">départ</span>`
+                :enCours?`<span class="badge" style="background:var(--amber-soft);color:var(--amber);white-space:nowrap">en cours</span>`
+                :`<span class="badge" style="background:var(--good-soft);color:var(--good);white-space:nowrap">clos</span>`;
+      const resume=`<div class="mois-ligne" data-mois="${b.mois}" role="button" tabindex="0"
+            style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:14px 18px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden">
+            <span style="font-weight:800;font-size:15px;white-space:nowrap">${cap(MOIS[+b.mois.slice(5,7)-1])}</span>${etiq}</div>
+          <div style="display:flex;align-items:center;gap:8px;white-space:nowrap;flex:0 0 auto">
+            <span style="font-weight:800;font-size:16px;color:${+b.cumul<0?"var(--danger)":"var(--accent)"}">${sg(+b.cumul)}</span>
+            <span class="chev" style="color:var(--muted)">›</span></div>
+        </div>`;
+
+      if(depart) return `<div class="panel" style="margin-bottom:10px">${resume}
+          <div class="mois-detail" data-detail="${b.mois}" style="display:none;padding:0 18px 14px">
+          ${li("Solde de départ", sg(+b.cumul), {fort:true,gros:true,couleur:+b.cumul<0?"var(--danger)":"var(--accent)"})}</div></div>`;
+
+      const corps=`
+        ${li("Heures effectives", fmtHM(+b.effectives), {fort:true})}
+        ${li("Repos à déduire", +b.repos>0?"-"+fmtHM(+b.repos):"—", {trait:true,couleur:+b.repos>0?"var(--blue)":""})}
         ${li("Heures payées + HS", fmtHM(+b.payees), {trait:true})}
         ${li("TOTAL CRÉDIT D'HEURES SUR LE MOIS", sg(+b.credit), {trait:true,fort:true,couleur:+b.credit<0?"var(--danger)":"var(--accent)"})}
         ${li("Reste du mois précédent", sg(prec), {trait:true})}
         ${li("Cumul à créditer sur mois suivant", sg(+b.cumul), {trait:true,fort:true,gros:true,couleur:+b.cumul<0?"var(--danger)":"var(--accent)"})}
-        ${enCours?`<div style="color:var(--muted);font-size:12px;padding:2px 0 6px">${cap(MOIS[+b.mois.slice(5,7)-1].toLowerCase())} n'est pas fini : les deux derniers montants bougeront encore.</div>`:""}
-      </div>`;
+        ${enCours?`<div style="color:var(--muted);font-size:12px;padding:2px 0 6px">${cap(MOIS[+b.mois.slice(5,7)-1].toLowerCase())} n'est pas fini : les deux derniers montants bougeront encore.</div>`:""}`;
+
+      if(enCours) return `<div class="panel" style="padding:16px 18px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-weight:800;font-size:16px;white-space:nowrap">${cap(MOIS[+b.mois.slice(5,7)-1])}</span>${etiq}</div>${corps}</div>`;
+      return `<div class="panel" style="margin-bottom:10px">${resume}
+        <div class="mois-detail" data-detail="${b.mois}" style="display:none;padding:0 18px 14px">${corps}</div></div>`;
+    }).join("");
+
+    return `<div class="sec">Mes heures supplémentaires</div>${blocs}`;
+  }
+
+  /* Ouvre / referme le detail d'un mois clos. */
+  function brancherMois(){
+    document.querySelectorAll(".mois-ligne").forEach(l=>{
+      const bascule=()=>{
+        const d=document.querySelector('.mois-detail[data-detail="'+l.dataset.mois+'"]');
+        if(!d)return;
+        const ouvert=d.style.display!=="none";
+        d.style.display=ouvert?"none":"block";
+        const c=l.querySelector(".chev");
+        if(c){ c.style.transform=ouvert?"":"rotate(90deg)"; c.style.display="inline-block"; }
+      };
+      l.addEventListener("click",bascule);
+      l.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();bascule();}});
+    });
   }
 
   function renderHistorique(){
@@ -1384,7 +1436,7 @@ window.HK_CONFIG = {
         <div><div style="font-size:24px;font-weight:800" class="num">${fmtHM(totEff)}</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Heures ${histYear}</div></div>
         <div><div style="font-size:24px;font-weight:800" class="num">${fmtHM(totTrajet)}</div><div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:3px">Trajet ${histYear}</div></div>
       </div>
-      ${compteurSupp()}
+      ${compteurSupp(histYear)}
       <div class="sec">Le détail de mes journées</div>
       ${body}`;
     app.innerHTML=`
@@ -1411,6 +1463,7 @@ window.HK_CONFIG = {
     if(hr)hr.addEventListener("click",()=>{ renderLogin(employe?employe.id:""); });
     const hs=document.getElementById("h-sync");
     if(hs)hs.addEventListener("click",async()=>{hs.disabled=true;hs.textContent="Actualisation…";await synchroniser();if(!horsLigne)toast("Données à jour");renderHistorique();});
+    brancherMois();
   }
 
   /* Toast */
@@ -1424,6 +1477,14 @@ window.HK_CONFIG = {
     synchroniser();
   }
   window.addEventListener("online",()=>{ if(employe)synchroniser(); });
+  /* Retour de l'app au premier plan : on relit le serveur, au plus une fois
+     par minute. Sans ca, une correction faite par la direction n'arrivait
+     qu'au prochain lancement complet de l'app. */
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden||!employe||!employe.accessToken)return;
+    if(Date.now()-derniereSynchro<60000)return;
+    synchroniser();
+  });
   autoConnexion();
 })();
 </script>
