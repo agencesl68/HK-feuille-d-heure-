@@ -634,7 +634,7 @@ window.HK_CONFIG = {
     /* Compteur d'heures supplementaires, mois par mois (vue « bilans »).
        Les regles de securite ne renvoient que les lignes du salarie connecte. */
     async bilans(){
-      try{ const l=await SB.q("bilans?select=mois,effectives,payees,repos,travaillees,credit,cumul,conge,maladie,cfa&order=mois");
+      try{ const l=await SB.q("bilans?select=mois,effectives,payees,repos,credit,cumul&order=mois");
            return Array.isArray(l)?l:[]; }catch(e){ return null; }
     }
   };
@@ -1361,11 +1361,7 @@ window.HK_CONFIG = {
           ${li("Solde de départ", sg(+b.cumul), {fort:true,gros:true,couleur:+b.cumul<0?"var(--danger)":"var(--accent)"})}</div></div>`;
 
       const corps=`
-        ${li("Heures travaillées", fmtHM(+b.travaillees), {fort:true})}
-        ${+b.conge>0?li("Congé", fmtHM(+b.conge), {}):""}
-        ${+b.maladie>0?li("Maladie", fmtHM(+b.maladie), {}):""}
-        ${+b.cfa>0?li("CFA", fmtHM(+b.cfa), {}):""}
-        ${li("Total retenu", fmtHM(+b.effectives), {fort:true,trait:true})}
+        ${li("Heures effectives", fmtHM(+b.effectives), {fort:true})}
         ${li("Repos à déduire", +b.repos>0?"-"+fmtHM(+b.repos):"—", {trait:true,couleur:+b.repos>0?"var(--blue)":""})}
         ${li("Heures payées + HS", fmtHM(+b.payees), {trait:true})}
         ${li("TOTAL CRÉDIT D'HEURES SUR LE MOIS", sg(+b.credit), {trait:true,fort:true,couleur:+b.credit<0?"var(--danger)":"var(--accent)"})}
