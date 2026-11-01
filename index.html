@@ -498,7 +498,7 @@ window.HK_CONFIG = {
   cfa: ["trabaste","mstalder"],
   heuresCfa: 7,              // une journee de CFA compte 7 h, tous les jours
   /* Historique du salarie. Les totaux suivent le classeur : heures
-     effectives = travaillees + journees payees, trajet compte a part. */
+     travaillees = travaillees + conge/maladie/CFA - repos, trajet a part. */
   historiqueSalarie: true,
   heuresAttendues: { lundi:8, mardi:8, mercredi:8, jeudi:8, vendredi:8, samedi:0, dimanche:0 },
   journeeStandard: { matineeDebut:"07:30", matineeFin:"12:00", apremDebut:"13:00", apremFin:"16:30" }
@@ -634,7 +634,7 @@ window.HK_CONFIG = {
     /* Compteur d'heures supplementaires, mois par mois (vue « bilans »).
        Les regles de securite ne renvoient que les lignes du salarie connecte. */
     async bilans(){
-      try{ const l=await SB.q("bilans?select=mois,effectives,payees,repos,credit,cumul&order=mois");
+      try{ const l=await SB.q("bilans?select=mois,heures_comptees,payees,repos,repos_pris,travaillees,conge,maladie,cfa,credit,cumul&order=mois");
            return Array.isArray(l)?l:[]; }catch(e){ return null; }
     }
   };
@@ -1311,8 +1311,8 @@ window.HK_CONFIG = {
     return MOIS[d.getMonth()].toLowerCase()+" "+d.getFullYear();}
 
   /* Les cinq lignes du bas du classeur, telles quelles, sur le mois en cours.
-     « Heures effectives » n'y figure pas : le salarie a deja le total du mois
-     juste en dessous, mois par mois. */
+     « Heures travaillees » n'y figure pas : le salarie a deja le total du
+     mois juste en dessous, mois par mois. */
   /* Ce que le salarie voit de ses heures supp : deux chiffres, pas plus.
      - le total du mois        = TOTAL CREDIT D'HEURES SUR LE MOIS
      - le cumul a crediter     = reporte sur le mois suivant
@@ -1338,6 +1338,10 @@ window.HK_CONFIG = {
         <span style="font-size:13.5px;font-weight:${o.fort?800:600};color:${o.fort?"var(--ink)":"var(--muted)"}">${t}</span>
         <span style="font-weight:800;font-size:${o.gros?"19px":"15px"}${o.couleur?";color:"+o.couleur:""};white-space:nowrap">${v}</span></div>`;};
 
+    const sous=(t,v)=>`<div style="display:flex;justify-content:space-between;padding:3px 0 3px 12px">
+        <span style="color:var(--muted);font-size:12px">· ${t}</span>
+        <span style="color:var(--muted);font-size:12px;font-weight:600">${v}</span></div>`;
+
     const blocs=lignes.map(b=>{
       /* Report = cumul du dernier mois anterieur, cherche par la date et non
          par l'index : l'annee affichee n'est pas forcement la premiere. */
@@ -1361,8 +1365,13 @@ window.HK_CONFIG = {
           ${li("Solde de départ", sg(+b.cumul), {fort:true,gros:true,couleur:+b.cumul<0?"var(--danger)":"var(--accent)"})}</div></div>`;
 
       const corps=`
-        ${li("Heures effectives", fmtHM(+b.effectives), {fort:true})}
-        ${li("Repos à déduire", +b.repos>0?"-"+fmtHM(+b.repos):"—", {trait:true,couleur:+b.repos>0?"var(--blue)":""})}
+        ${li("Heures travaillées", fmtHM(+b.heures_comptees), {fort:true})}
+        ${sous("travaillées", fmtHM(+b.travaillees))}
+        ${+b.conge>0?sous("congé", fmtHM(+b.conge)):""}
+        ${+b.maladie>0?sous("maladie", fmtHM(+b.maladie)):""}
+        ${+b.cfa>0?sous("CFA", fmtHM(+b.cfa)):""}
+        ${+b.repos_pris>0?sous("repos pris", fmtHM(+b.repos_pris)):""}
+        ${+b.repos>0?sous("repos déduit", "-"+fmtHM(+b.repos)):""}
         ${li("Heures payées + HS", fmtHM(+b.payees), {trait:true})}
         ${li("TOTAL CRÉDIT D'HEURES SUR LE MOIS", sg(+b.credit), {trait:true,fort:true,couleur:+b.credit<0?"var(--danger)":"var(--accent)"})}
         ${li("Reste du mois précédent", sg(prec), {trait:true})}
